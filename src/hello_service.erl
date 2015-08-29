@@ -27,7 +27,7 @@ call(Name, Identifier, Request) ->
             Handler = hello_handler:get_handler(Name, Identifier, HandlerMod, HandlerArgs),
             hello_handler:process(Handler, Request);
         {error, not_found} ->
-            ?LOG_WARNING("Service ~s not found", [Name]),
+            ?LOG_WARNING("Service ~s not found", [Name], [], ?LOGID99),
             {error, method_not_found}
     end.
 

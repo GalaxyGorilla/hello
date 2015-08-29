@@ -103,7 +103,7 @@ http_chunked_loop(Req, State) ->
             case cowboy_req:chunk(BinResp, Req) of
                 ok -> http_chunked_loop(Req, State);
                 R -> 
-                    ?LOG_ERROR("cowboy_req:chunk result ~p during send ~p to ~p", [R, BinResp, Req]),
+                    ?LOG_ERROR("cowboy_req:chunk result ~p during send ~p to ~p", [R, BinResp, Req], [], ?LOGID99),
                     {ok, Req, State}
             end
     end.

@@ -72,7 +72,7 @@ init(URL) ->
             State = #state{socket = Socket, url = URL},
             {ok, State};
         {error, Error} ->
-            ?LOG_ERROR("ezmq_bind_url error: ~p", [Error]),
+            ?LOG_ERROR("ezmq_bind_url error: ~p", [Error], [], ?LOGID99),
             {stop, Error}
     end.
 
@@ -88,7 +88,7 @@ handle_info({zmq, Socket, {Peer, [Signature, Msg]}}, State = #state{url = URL, s
     {noreply, State};
 
 handle_info({zmq, _Socket, {Peer, Msg}}, State) ->
-    ?LOG_ERROR("received bad message: ~p from ~p", [Msg, Peer]),
+    ?LOG_ERROR("received bad message: ~p from ~p", [Msg, Peer], [], ?LOGID99),
     {noreply, State};
 
 handle_info({hello_msg, _Handler, Peer, Signature, Message}, State = #state{socket = Socket}) ->
@@ -100,7 +100,7 @@ handle_info({hello_closed, _HandlerPid, _Peer}, State) ->
 handle_info({'EXIT', _Reason}, State) ->
     {noreply, State};
 handle_info({dnssd, _Ref, Msg}, State) ->
-    ?LOG_INFO("dnssd Msg: ~p", [Msg]),
+    ?LOG_INFO("dnssd Msg: ~p", [Msg], [], ?LOGID99),
     {noreply, State}.
 
 terminate(_Reason, State) ->

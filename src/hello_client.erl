@@ -31,11 +31,14 @@
 
 %% for tests
 -export([handle_internal/2]).
+-export([gen_meta_fields/1]).
 
 -include("hello.hrl").
 -include("hello_log.hrl").
 -include_lib("ex_uri/include/ex_uri.hrl").
+
 -define(DEFAULT_TIMEOUT, 10000).
+-define(HELLO_CLIENT_DEFAULT_META(ClientId, Url), [{hello_client, ClientId}, {hello_transport_url, Url}]).
 
 -type client_name()  :: {local, atom()} | {global, atom()} | {via, atom(), term()}.
 -type start_result() :: {ok, pid()} | ignore | {error, {already_started, pid()} | term()}.
@@ -72,7 +75,7 @@ start_link(URI, {TransportOpts, ProtocolOpts, ClientOpts}) ->
 
 % @deprecated
 start_link(Name, URI, {TransportOpts, ProtocolOpts, ClientOpts}) ->
-    gen_server:start_link(Name, ?MODULE, {URI, TransportOpts, ProtocolOpts, ClientOpts}, []).
+    gen_server:start_link(Name, ?MODULE, {URI, TransportOpts, ProtocolOpts, ClientOpts ++ [{name, Name}]}, []).
 
 -spec start_link(URI :: string(), trans_opts(), protocol_opts(), client_opts()) -> start_result().
 start_link(URI, TransportOpts, ProtocolOpts, ClientOpts) ->
@@ -80,7 +83,7 @@ start_link(URI, TransportOpts, ProtocolOpts, ClientOpts) ->
 
 -spec start_link(client_name(), URI :: string(), trans_opts(), protocol_opts(), client_opts()) -> start_result(). 
 start_link(Name, URI, TransportOpts, ProtocolOpts, ClientOpts) ->
-    gen_server:start_link(Name, ?MODULE, {URI, TransportOpts, ProtocolOpts, ClientOpts}, []).
+    gen_server:start_link(Name, ?MODULE, {URI, TransportOpts, ProtocolOpts, ClientOpts ++ [{name, Name}]}, []).
 
 %% API to start with hello supervisor
 -spec start_supervised(URI :: string(), trans_opts(), protocol_opts(), client_opts()) -> 
@@ -91,7 +94,7 @@ start_supervised(URI, TransportOpts, ProtocolOpts, ClientOpts) ->
 -spec start_supervised(atom(), URI :: string(), trans_opts(), protocol_opts(), client_opts()) -> 
     {ok, pid()}. 
 start_supervised(Name, URI, TransportOpts, ProtocolOpts, ClientOpts) ->
-    hello_client_sup:start_named_client(Name, URI, {TransportOpts, ProtocolOpts, ClientOpts}).
+    hello_client_sup:start_named_client(Name, URI, {TransportOpts, ProtocolOpts, ClientOpts ++ [{name, {Name}}]}).
 
 -spec stop_supervised(client_name()) -> ok | {error, Reason :: term()}. 
 stop_supervised(Client) ->
@@ -119,6 +122,7 @@ timeout_call(Client, Call, Timeout) ->
 %% ----------------------------------------------------------------------------------------------------
 %% -- gen_server callbacks
 -record(client_state, {
+    id :: term(),
     transport_mod :: module(),
     transport_state :: term(),
     protocol_mod :: atom(),
@@ -144,7 +148,8 @@ init({URI, TransportOpts, ProtocolOpts, ClientOpts}) ->
     end.
 
 %% @hidden
-handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod, protocol_state = ProtocolState}) ->
+handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod, 
+                                        protocol_state = ProtocolState, id = ClientId}) ->
     case hello_proto:build_request(Call, ProtocolMod, ProtocolState) of
         {ok, Request, NewProtocolState} ->
             State1 = State#client_state{protocol_state = NewProtocolState},
@@ -152,12 +157,15 @@ handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod
                 {ok, State2} -> {noreply, State2};
                 {ok, Reply, State2} -> {reply, Reply, State2};
                 {error, Reason, State2} ->
-                    ?LOG_ERROR("unsuccessful send request: ~p, reason: ~p", [Request, Reason]),
+                    ?LOG_ERROR("Request '~p' from hello client '~p' failed with reason '~p'.", 
+                        [Request, ClientId, Reason], gen_meta_fields(State2), ?LOGID00),
                     {reply, Reason, State2}
             end;
         {error, Reason, NewProtocolState} ->
-            ?LOG_ERROR("unsuccessful build request for call: ~p, reason: ~p", [Call, Reason]),
-            {reply, Reason, State#client_state{protocol_state = NewProtocolState}}
+            NewState = State#client_state{protocol_state = NewProtocolState},
+            ?LOG_ERROR("Creation of request from hello client '~p' failed for call '~p' with reason '~p'.", 
+                        [ClientId, Call, Reason], gen_meta_fields(NewState), ?LOGID01),
+            {reply, Reason, NewState}
     end;
 handle_call(terminate, _From, State) ->
     {stop, normal, ok, State}.
@@ -196,6 +204,10 @@ code_change(_FromVsn, _ToVsn, State) ->
 %% --------------------------------------------------------------------------------
 %% -- Helper functions
 init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts) ->
+    ClientId = get_client_id(ClientOpts),
+    Url = ex_uri:encode(URIRec),
+    ?LOG_INFO("Initializing hello client '~p' on '~p' ...", [ClientId, Url], 
+                ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID02), 
     case TransportModule:init_transport(URIRec, TransportOpts) of
         {ok, TransportState} ->
             NotificationSink = proplists:get_value(notification_sink, ProtocolOpts, undefined),
@@ -210,61 +222,99 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts)
                                           protocol_state = ProtocolState,
                                           notification_sink = NotificationSink},
                     evaluate_client_options(ClientOpts, State);
-                {error, Reason} -> {stop, Reason}
+                {error, Reason} -> 
+                    ?LOG_ERROR("Hello client '~p': Unable to initialize protocol because of reason '~p'.",
+                                [ClientId, Reason], ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID03),
+                    {stop, Reason}
             end;
-        {error, Reason} -> {stop, Reason}
+        {error, Reason} -> 
+            ?LOG_ERROR("Hello client '~p': Unable to initialize transport because of reason '~p'.",
+                        [ClientId, Reason], ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID04),
+            {stop, Reason}
     end.
 
 evaluate_client_options(ClientOpts, State) ->
     KeepAliveInterval = proplists:get_value(keep_alive_interval, ClientOpts, -1),
+    ClientId = get_client_id(ClientOpts),
     if
         KeepAliveInterval =< 0 ->
-            {ok, State#client_state{keep_alive_interval = -1}};
+            State1 = State#client_state{keep_alive_interval = -1, id = ClientId},
+            ?LOG_INFO("Hello client '~p' initialized successfully.", [ClientId], 
+                        gen_meta_fields(State1), ?LOGID05),
+            {ok, State1};
         KeepAliveInterval > 0 ->
             {ok, TimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
-            {ok, State#client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef}}
+            State1 = State#client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, id = ClientId},
+            ?LOG_INFO("Hello client '~p' initialized successfully.", [ClientId], gen_meta_fields(State1), ?LOGID06),
+            {ok, State1}
     end.
 
-incoming_message({error, _Reason, NewTransportState}, State) -> %%will be logged later
+get_client_id(ClientOpts) ->
+    ClientName = proplists:get_value(name, ClientOpts, {self()}),
+    element(tuple_size(ClientName), ClientName).
+
+incoming_message({error, Reason, NewTransportState}, State = #client_state{id = ClientId}) -> %%will be logged later
+    ?LOG_ERROR("Hello client '~p' received error notification from transport handler with reason '~p'.", 
+                [ClientId, Reason], gen_meta_fields(State), ?LOGID07),
     {noreply, State#client_state{transport_state = NewTransportState}};
-incoming_message({ok, Signature, BinResponse, NewTransportState},
-                 State = #client_state{async_request_map = AsyncMap, protocol_mod = ProtocolMod, protocol_opts = ProtocolOpts}) ->
+incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #client_state{async_request_map = AsyncMap, 
+                    protocol_mod = ProtocolMod, protocol_opts = ProtocolOpts, id = ClientId}) ->
     case hello_proto:decode(ProtocolMod, ProtocolOpts, Signature, BinResponse, response) of
         {ok, #response{id = null, response = Response}} ->
+            ?LOG_DEBUG("Hello client '~p' received notification with content '~p'.", [ClientId, Response], 
+                        gen_meta_fields(State), ?LOGID08), 
             notification(Response, State),
             {noreply, State#client_state{transport_state = NewTransportState}};
         {ok, Response = #response{}} ->
-            NewAsyncMap = request_reply(Response, AsyncMap),
-            {noreply, State#client_state{transport_state = NewTransportState, async_request_map = NewAsyncMap}};
+            ?LOG_DEBUG("Hello client '~p' received single response with content '~p'.", [ClientId, Response], 
+                        gen_meta_fields(State), ?LOGID09), 
+            request_reply(Response, AsyncMap, State);
         {ok, Responses = [{ok, #response{}} | _]} ->
+            ?LOG_DEBUG("Hello client '~p' received batch response with content '~p'.", [ClientId, Responses], 
+                        gen_meta_fields(State), ?LOGID10), 
             NotificationRespopses = [R || {_, #response{id = null} = R} <- Responses],
             NotificationRespopses /= [] andalso notification([R || #response{response = R} <- NotificationRespopses], State),
             Responses1 = [R || {_, R} <- Responses] -- NotificationRespopses,
-            NewAsyncMap = request_reply(Responses1, AsyncMap),
-            {noreply, State#client_state{transport_state = NewTransportState, async_request_map = NewAsyncMap}};
-        {error, _Reason} ->
+            request_reply(Responses1, AsyncMap, State#client_state{transport_state = NewTransportState});
+        {error, Reason} ->
+            ?LOG_DEBUG("Hello client '~p' failed to decode  '~p' with reason '~p'.", [ClientId, BinResponse, Reason], 
+                        gen_meta_fields(State), ?LOGID11), 
             {noreply, State#client_state{transport_state = NewTransportState}};
         ignore ->
+            ?LOG_DEBUG("Hello client '~p' ignored binary response '~p'.", [ClientId, BinResponse], 
+                        gen_meta_fields(State), ?LOGID12), 
             {noreply, State#client_state{transport_state = NewTransportState}};
         {internal, Message} ->
+            ?LOG_DEBUG("Hello client '~p' received internal message '~p'.", [ClientId, Message], 
+                        gen_meta_fields(State), ?LOGID13), 
             {ok, State1} = ?MODULE:handle_internal(Message, State),
             {noreply, State1}
     end.
 
 outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod, protocol_opts = ProtocolOpts,
                                                       transport_mod = TransportModule, transport_state = TransportState, 
-                                                      async_request_map = AsyncMap}) ->
+                                                      async_request_map = AsyncMap, id = ClientId}) ->
     case hello_proto:encode(ProtocolMod, ProtocolOpts, Request) of
         {ok, BinRequest} ->
             Signature = hello_proto:signature(ProtocolMod, ProtocolOpts),
             case TransportModule:send_request(BinRequest, Signature, TransportState) of
                 {ok, NewTransportState} ->
+                    ?LOG_DEBUG("Hello client '~p' sent request '~p'.", [ClientId, Request], 
+                                gen_meta_fields(State), ?LOGID14), 
                     maybe_noreply(NewTransportState, Request, From, AsyncMap, State);
                 {error, Reason, NewTransportState} ->
+                    ?LOG_DEBUG("Hello client '~p' attempted to send binary request '~p' but failed with reason '~p'.", 
+                                [ClientId, BinRequest, Reason], gen_meta_fields(State), ?LOGID15), 
                     {error, Reason, State#client_state{transport_state = NewTransportState}}
             end;
-        {error, Reason, State} -> {error, Reason, State};
-        ignore -> {ok, State}
+        {error, Reason, State} -> 
+            ?LOG_WARNING("Hello client '~p' attempted to encode request '~p' but failed with reason '~p'.", 
+                        [ClientId, Request, Reason], gen_meta_fields(State), ?LOGID16), 
+            {error, Reason, State};
+        ignore -> 
+            ?LOG_DEBUG("Hello client '~p' ignored sending request '~p'.", [ClientId, Request], 
+                        gen_meta_fields(State), ?LOGID17), 
+            {ok, State}
     end.
 
 update_map(Requests, From, AsyncMap0) when is_list(Requests) -> 
@@ -274,7 +324,9 @@ update_map(Requests, From, AsyncMap0) when is_list(Requests) ->
 update_map(#request{id = undefined}, _From, AsyncMap) -> AsyncMap;
 update_map(#request{id = RequestId} = Request, From, AsyncMap) -> gb_trees:enter(RequestId, {From, Request}, AsyncMap).
 
-handle_internal(?PONG, State = #client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef}) ->
+handle_internal(?PONG, State = #client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, id = ClientId}) ->
+    ?LOG_DEBUG("Hello client '~p' received '~p'. Pinging server again in '~p' milliseconds.", 
+                [ClientId, ?PONG, KeepAliveInterval], gen_meta_fields(State), ?LOGID18), 
     timer:cancel(TimerRef),
     {ok, NewTimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
     {ok, State#client_state{keep_alive_ref = NewTimerRef}};
@@ -306,15 +358,25 @@ notification(Response, _State = #client_state{notification_sink = NotificationSi
             ignore
     end.
 
-request_reply(#response{} = Response, AsyncMap) ->
-    request_reply([Response], AsyncMap, []);
-request_reply(Responses, AsyncMap) ->
-    request_reply(Responses, AsyncMap, []).
+request_reply(Response, AsyncMap, State) ->
+    case request_reply1(Response, AsyncMap) of
+        {ok, NewAsyncMap} ->
+            {noreply, State#client_state{async_request_map = NewAsyncMap}};
+        {not_found, RequestId, NewAsyncMap} ->
+            ?LOG_WARNING("Hello client '~p' got response for non-existing request id '~p'.", 
+                            [RequestId], gen_meta_fields(State), ?LOGID19),
+            {noreply, State#client_state{async_request_map = NewAsyncMap}}
+    end.
 
-request_reply([], AsyncMap, [{CallRef, Response}]) -> 
+request_reply1(#response{} = Response, AsyncMap) ->
+    request_reply1([Response], AsyncMap, []);
+request_reply1(Responses, AsyncMap) ->
+    request_reply1(Responses, AsyncMap, []).
+
+request_reply1([], AsyncMap, [{CallRef, Response}]) -> 
     gen_server:reply(CallRef, {ok, Response}),
-    AsyncMap;
-request_reply([], AsyncMap, Responses) ->
+    {ok, AsyncMap};
+request_reply1([], AsyncMap, Responses) ->
     Refs = proplists:get_keys(Responses),
     lists:map(fun(CallRef) -> 
                 NewAcc = lists:filtermap(fun({Ref, Response}) when Ref =:= CallRef -> 
@@ -322,13 +384,15 @@ request_reply([], AsyncMap, Responses) ->
                                             (_) -> false end, lists:reverse(Responses)),
                 gen_server:reply(CallRef, {ok, NewAcc})
               end, Refs),
-    AsyncMap;
-request_reply([#response{id = RequestId, response = Response} | Tail], AsyncMap, Responses) ->
+    {ok, AsyncMap};
+request_reply1([#response{id = RequestId, response = Response} | Tail], AsyncMap, Responses) ->
     case gb_trees:lookup(RequestId, AsyncMap) of
         {value, {CallRef, _Request}} ->
             NewAsyncMap = gb_trees:delete(RequestId, AsyncMap),
-            request_reply(Tail, NewAsyncMap, [{CallRef, Response} | Responses]);
+            request_reply1(Tail, NewAsyncMap, [{CallRef, Response} | Responses]);
         none ->
-            ?LOG_WARNING("get not existing request_id ~p", [RequestId]),
-            AsyncMap
+            {not_found, RequestId, AsyncMap}
     end.
+
+gen_meta_fields(#client_state{transport_mod = TransportModule, transport_state = TransportState, id = ClientId}) ->
+    lists:append([{hello_client, ClientId}], TransportModule:gen_meta_fields(TransportState)).

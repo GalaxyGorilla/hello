@@ -23,6 +23,7 @@
 
 -behaviour(hello_client).
 -export([init_transport/2, send_request/3, terminate_transport/2, handle_info/2]).
+-export([gen_meta_fields/1]).
 
 -include_lib("ex_uri/include/ex_uri.hrl").
 -include("hello.hrl").
@@ -52,13 +53,13 @@ terminate_transport(_Reason, #zmq_state{socket = Socket}) ->
     ezmq:close(Socket).
 
 handle_info({dnssd, _Ref, {resolve,{Host, Port, _Txt}}}, State = #zmq_state{uri = URI, socket = Socket}) ->
-    ?LOG_INFO("dnssd Service: ~p:~w", [Host, Port]),
+    ?LOG_INFO("dnssd Service: ~p:~w", [Host, Port], [], ?LOGID99),
     Protocol = zmq_protocol(URI),
     R = ezmq:connect(Socket, tcp, clean_host(Host), Port, [Protocol]),
-    ?LOG_INFO("ezmq:connect: ~p", [R]),
+    ?LOG_INFO("ezmq:connect: ~p", [R], [], ?LOGID99),
     {noreply, State};
 handle_info({dnssd, _Ref, Msg}, State) ->
-    ?LOG_INFO("dnssd Msg: ~p", [Msg]),
+    ?LOG_INFO("dnssd Msg: ~p", [Msg], [], ?LOGID99),
     {noreply, State};
 handle_info({zmq, _Socket, [Signature, Msg]}, State) -> %% recieve on req socket
     {?INCOMING_MSG, {ok, Signature, Msg, State}};
@@ -107,3 +108,6 @@ clean_host(Host) ->
             Host
     end,
     binary_to_list(CleanedHost).
+
+gen_meta_fields(#zmq_state{uri = Uri}) ->
+    [{hello_transport, zmtp}, {hello_transport_url, ex_uri:encode(Uri)}].

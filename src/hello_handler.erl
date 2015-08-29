@@ -82,10 +82,10 @@ get_handler(Name, Identifier, HandlerMod, HandlerArgs) ->
     case hello_registry:lookup({handler, Name, Identifier}) of
         {error, not_found} ->
             ?LOG_DEBUG("Hadler for service ~p and identifier ~p not found, "
-                      "it will have been started", [Name, Identifier]),
+                      "it will have been started", [Name, Identifier], [], ?LOGID99),
             start_handler(Identifier, HandlerMod, HandlerArgs);
         {ok, _, Handler} ->
-            ?LOG_DEBUG("Found hadler ~p for service ~p and identifier ~p", [Handler, Name, Identifier]),
+            ?LOG_DEBUG("Found hadler ~p for service ~p and identifier ~p", [Handler, Name, Identifier], [], ?LOGID99),
             Handler
     end.
 

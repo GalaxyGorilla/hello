@@ -104,7 +104,7 @@ subscriptions(listener) -> [{[hello, listeners], value, ?DEFAULT_INTERVAL}];
 subscriptions(client) -> [{[hello, clients], value, ?DEFAULT_INTERVAL}];
 
 subscriptions(Type) -> 
-    ?LOG_WARNING("unknown subscription type ~p", [Type]), [].
+    ?LOG_WARNING("unknown subscription type ~p", [Type], [], ?LOGID99), [].
 
 
 % @private

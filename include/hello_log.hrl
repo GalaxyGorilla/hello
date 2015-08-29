@@ -2,8 +2,11 @@
 -define(HELLO_LOG, 1).
 
 -include("hello.hrl").
+-include("hello_log_ids.hrl").
 
 -define(DEFAULT_TRACES, [{class, hello}]).
+-define(DEFAULT_META(Meta, LogId), 
+        lists:append([[{status_code, element(1, LogId)}, {message_id, element(2, LogId)}], Meta, ?DEFAULT_TRACES])).
 -define(REQ_TRACES(Mod, Method), [{class, hello}, {hello_request, api}, {hello_handler, Mod}, {hello_method, Method}]).
 -define(BAD_TRACES(Mod, Method), [{class, hello}, {hello_request, error}, {hello_handler, Mod}, {hello_method, Method}]).
 
@@ -42,13 +45,15 @@
                 "bad request on ~w. ~s - ~w", 
                 [HandlerPid, hello_log:fmt_request(Request), Reason])).
 
--define(LOG_DEBUG(Msg, Args), lager:debug(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_INFO(Msg, Args), lager:info(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_NOTICE(Msg, Args), lager:notice(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_WARNING(Msg, Args), lager:warning(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_ERROR(Msg, Args), lager:error(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_CRITICAL(Msg, Args), lager:critical(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_ALERT(Msg, Args), lager:alert(?DEFAULT_TRACES, Msg, Args)).
--define(LOG_EMERGENCY(Msg, Args), lager:emergency(?DEFAULT_TRACES, Msg, Args)).
+-define(PREP_SC(LogId, Msg), lists:append([element(2, LogId), " - ", Msg])).
+
+-define(LOG_DEBUG(Msg, Args, Meta, LogId), lager:debug(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_INFO(Msg, Args, Meta, LogId), lager:info(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_NOTICE(Msg, Args, Meta, LogId), lager:notice(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_WARNING(Msg, Args, Meta, LogId), lager:warning(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_ERROR(Msg, Args, Meta, LogId), lager:error(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_CRITICAL(Msg, Args, Meta, LogId), lager:critical(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_ALERT(Msg, Args, Meta, LogId), lager:alert(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
+-define(LOG_EMERGENCY(Msg, Args, Meta, LogId), lager:emergency(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
 
 -endif.

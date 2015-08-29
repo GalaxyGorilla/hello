@@ -7,10 +7,11 @@ route(_Context = #context{session_id = Id}, Request = #request{method = Method},
     Namespace = get_namespace(Method),
     case hello_binding:lookup(ExURI, Namespace) of
         {error, not_found} ->
-            ?LOG_WARNING("Route couldn't find a service for a key ~s not found", [Namespace]),
+            ?LOG_WARNING("Route couldn't find a service for a key ~s not found", [Namespace], [], ?LOGID99),
             {error, method_not_found};
         {ok, _, Name} ->
-            ?LOG_DEBUG("Request ~p in namespace ~p will have been routed to ~p", [Request, Namespace, Name]),
+            ?LOG_DEBUG("Request ~p in namespace ~p will have been routed to ~p", 
+                        [Request, Namespace, Name], [], ?LOGID99),
             {ok, Name, Id}
     end.
 

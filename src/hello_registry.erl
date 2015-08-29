@@ -116,15 +116,15 @@ handle_call(_Call, _From, State) ->
     {reply, {error, unknown_call}, State}.
 
 handle_info({'EXIT', From, Reason}, Table) ->
-    ?LOG_WARNING("~p: exit with reason ~p", [From, Reason]),
+    ?LOG_WARNING("~p: exit with reason ~p", [From, Reason], [], ?LOGID99),
     {noreply, Table};
 handle_info({'DOWN', _MRef, process, Pid, Reason}, Table) ->
     Objects = ets:match(Table, {'$1', Pid, '_', '_'}),
-    ?LOG_WARNING("~p: down ~p with reason ~p", [Pid, Objects, Reason]),
+    ?LOG_WARNING("~p: down ~p with reason ~p", [Pid, Objects, Reason], [], ?LOGID99),
     spawn(fun() -> [down(Object)|| Object <- Objects] end),
     {noreply, Table};
 handle_info({dnssd, _Ref, Msg}, State) ->
-    ?LOG_DEBUG("dnssd Msg: ~p", [Msg]),
+    ?LOG_DEBUG("dnssd Msg: ~p", [Msg], [], ?LOGID99),
     {noreply, State};
 handle_info(_InfoMsg, State) ->
     {noreply, State}.
@@ -147,10 +147,10 @@ register(Key, Pid, Data, Table) ->
         true ->
             update_metric(Key, 1),
             is_pid(Pid) andalso monitor_(Table, Pid),
-            ?LOG_DEBUG("Register ~p for pid ~p with data: ~p", [Key, Pid, Data]),
+            ?LOG_DEBUG("Register ~p for pid ~p with data: ~p", [Key, Pid, Data], [], ?LOGID99),
             bind(Key, Pid, Data, Table);
         false -> 
-            ?LOG_ERROR("Tried to register ~p for pid ~p, but pid not alive", [Key, Pid]),
+            ?LOG_ERROR("Tried to register ~p for pid ~p, but pid not alive", [Key, Pid], [], ?LOGID99),
             {error, pid_not_alive}
     end.
 
@@ -174,10 +174,10 @@ update_metric({binding, _}, Value) -> hello_metrics:binding(Value);
 update_metric({service, _}, Value) -> hello_metrics:service(Value);
 update_metric({listener, _}, Value) -> hello_metrics:listener(Value);
 update_metric(Key, _) -> 
-    ?LOG_INFO("unknown key ~p for register_metric", [Key]).
+    ?LOG_INFO("unknown key ~p for register_metric", [Key], [], ?LOGID99).
 
 do_dnss_register(App, Name, Port) ->
-    ?LOG_INFO("dnss register ~p/~p on port ~p", [App, Name, Port]),
+    ?LOG_INFO("dnss register ~p/~p on port ~p", [App, Name, Port], [], ?LOGID99),
     case dnssd:register(Name, <<"_", App/binary, "._tcp">>, Port) of
         {ok, Ref} -> Ref;
         _ -> ok

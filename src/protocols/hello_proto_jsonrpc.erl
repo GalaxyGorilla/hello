@@ -43,7 +43,7 @@ init_client(Proplist) ->
         true ->
             {ok, #jsonrpc_info{ reqid = 0, version = JsonRPCVersion} };
         _ ->
-            ?LOG_ERROR("Unsupported JSONRPC version ~p", [JsonRPCVersion]),
+            ?LOG_ERROR("Unsupported JSONRPC version ~p", [JsonRPCVersion], [], ?LOGID99),
             {error, invalid_json_version}
     end.
 
@@ -75,7 +75,7 @@ decode(Binary, _Opts, Type) ->
         end
     catch
         Error:Reason ->
-            ?LOG_ERROR("Error ~p Reason ~p ~p~n", [Error, Reason, erlang:get_stacktrace()]),
+            ?LOG_ERROR("Error ~p Reason ~p ~p~n", [Error, Reason, erlang:get_stacktrace()], [], ?LOGID99),
             {error, #error{code = parse_error}}
     end.
 
@@ -125,7 +125,7 @@ decode_single(Object, Type) ->
         decode_single(Type, Object, Info)
     catch
         throw:{_Invalid, #jsonrpc_info{reqid = null}, _Reason} -> %% just a notification, no need to tell anyone
-            ?LOG_ERROR("get invalid notification: ~p", [Object]),
+            ?LOG_ERROR("get invalid notification: ~p", [Object], [], ?LOGID99),
             ignore;
         throw:{invalid, Info1, Reason} -> %% an invalid response, this should never happen
             Error =  build_error(#error{code = invalid(Type), message = Reason}),
