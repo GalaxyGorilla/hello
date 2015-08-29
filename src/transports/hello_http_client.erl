@@ -24,6 +24,7 @@
 -behaviour(hello_client).
 -export([init_transport/2, send_request/3, terminate_transport/2, handle_info/2]).
 -export([http_send/4]).
+-export([gen_meta_fields/1]).
 
 -include_lib("ex_uri/include/ex_uri.hrl").
 -include("hello.hrl").
@@ -46,7 +47,8 @@ init_transport(URL, Options) ->
             http_connect_url(URL),
             {ok, #http_state{url = ex_uri:encode(URL), scheme = URL#ex_uri.scheme, path = URL#ex_uri.path, options = ValOpts}};
         {error, Reason} ->
-            ?LOG_ERROR("Invalid options for init http client, reason: ~p", [Reason]),
+            ?LOG_INFO("Hello http client invoked with invalid options. Terminated with reason '~p'.", [Reason], 
+                        [{hello_error_reason, {error, Reason, Options}}], ?LOGID39),
             {error, Reason}
     end.
 
@@ -60,10 +62,12 @@ terminate_transport(_Reason, _State) ->
     ok.
 
 handle_info({dnssd, _Ref, {resolve,{Host, Port, _Txt}}}, State = #http_state{scheme = Scheme, path = Path}) ->
-    ?LOG_INFO("dnssd Service: ~p:~w", [Host, Port]),
+    ?LOG_INFO("Hello http client: DNS discovery service resolved path '~p' to host '~p:~w'.", [Path, Host, Port], 
+                gen_meta_fields(State), ?LOGID40),
     {noreply, State#http_state{url = build_url(Scheme, Host, Path, Port)}};
 handle_info({dnssd, _Ref, Msg}, State) ->
-    ?LOG_INFO("dnssd Msg: ~p", [Msg]),
+    ?LOG_INFO("Hello https client received message '~p' from DNS discovery service.", [Msg], 
+                gen_meta_fields(State), ?LOGID41),
     {noreply, State}.
 
 build_url(Scheme, Host, Path, Port) ->
@@ -95,20 +99,20 @@ content_type(Signarute) ->
 http_send(Client, Request, Signarute, State = #http_state{url = URL, options = Options}) ->
     #http_options{method = Method, ib_opts = Opts} = Options,
     {ok, Vsn} = application:get_key(hello, vsn),
-    Headers = [{<<"Content-Type">>, content_type(Signarute)},
-               {<<"Accept">>, content_type(Signarute)},
-               {<<"User-Agent">>, <<"hello/", (list_to_binary(Vsn))/binary>>}],
+    Headers = [{<<"content-type">>, content_type(Signarute)},
+               {<<"accept">>, content_type(Signarute)},
+               {<<"user-agent">>, <<"hello/", (list_to_binary(Vsn))/binary>>}],
     case hackney:Method(URL, Headers, Request, Opts) of
         {ok, Success, RespHeaders, ClientRef} when Success =:= 200; Success =:= 201; Success =:= 202 ->
             {ok, Body} = hackney:body(ClientRef),
-            Signarute1 = proplists:get_value(<<"Content-Type">>, RespHeaders, <<"undefined">>),
-            outgoing_message(Client, Signarute1, Body, State);
+            Signature1 = hackney_headers:get_value(<<"content-type">>, hackney_headers:new(RespHeaders), <<"undefined">>),
+            outgoing_message(Client, Signature1, Body, State);
         {ok, HttpCode, _, _} ->
             Client ! {?INCOMING_MSG, {error, HttpCode, State}},
             exit(normal);
         {error, Reason} ->
-            ?LOG_ERROR("error during ibrowse:send_req to, url: ~p, headers: ~p, request: ~p, reason: ~p", 
-                       [URL, Headers, Request, Reason]),
+            ?LOG_INFO("Hello http client received an error after executing a request to '~p' with reason '~p'.", [URL, Reason],
+                        lists:append(gen_meta_fields(State), [{hello_error_reason, {{request, Request}, {error, Reason}}}]), ?LOGID42), 
             Client ! {?INCOMING_MSG, {error, Reason, State}},
             exit(normal)
     end.
@@ -148,3 +152,6 @@ http_connect_url(#ex_uri{authority = #ex_uri_authority{host = Host}, path = [$/|
     ok;
 http_connect_url(URI) ->
     URI.
+
+gen_meta_fields(#http_state{url = URL, path = Path}) ->
+    [{hello_transport, http}, {hello_transport_url, URL}, {hello_transport_path, Path}].
