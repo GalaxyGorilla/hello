@@ -48,6 +48,7 @@
 %% ----------------------------------------------------------------------------------------------------
 %% -- internal records
 -record(state, {
+    id                      :: term(),
     mod                     :: module(),
     state                   :: term(),
     context                 :: #context{},
@@ -81,11 +82,11 @@
 get_handler(Name, Identifier, HandlerMod, HandlerArgs) ->
     case hello_registry:lookup({handler, Name, Identifier}) of
         {error, not_found} ->
-            ?LOG_DEBUG("Hadler for service ~p and identifier ~p not found, "
-                      "it will have been started", [Name, Identifier], [], ?LOGID99),
+            ?LOG_DEBUG("Handler for service ~p and identifier ~p not found, "
+                      "going to start handler.", [Name, Identifier], [], ?LOGID99),
             start_handler(Identifier, HandlerMod, HandlerArgs);
         {ok, _, Handler} ->
-            ?LOG_DEBUG("Found hadler ~p for service ~p and identifier ~p", [Handler, Name, Identifier], [], ?LOGID99),
+            ?LOG_DEBUG("Found handler ~p for service ~p and identifier ~p", [Handler, Name, Identifier], [], ?LOGID99),
             Handler
     end.
 
@@ -127,30 +128,32 @@ reply(ReqContext = #context{handler_pid = HandlerPid}, Result) ->
 %% @hidden
 init({Identifier, HandlerMod, HandlerArgs}) ->
     case HandlerMod:init(Identifier, HandlerArgs) of
-        Result when is_tuple(Result) and (element(1, Result) == ok) ->
-            setelement(2, Result, #state{mod = HandlerMod, state = element(2, Result), async_reply_map = gb_trees:empty()});
+        {ok, Handlerstate} ->
+            {ok, #state{mod = HandlerMod, state = Handlerstate, 
+                        async_reply_map = gb_trees:empty(), id = Identifier}};
         Other ->
             Other
     end.
 
 %% @hidden
-handle_cast({request, Request = #request{context = Context}}, State = #state{mod = Mod, state = _HandlerState}) ->
+handle_cast({request, Request = #request{context = Context}}, 
+                State = #state{mod = Mod, state = _HandlerState, id = Id}) ->
     % TODO: fix logging, request should be loged with answer. If no answer, should be logged, no answer
     try do_request(Request, State)
     catch
         Error:Reason ->
             send(Context, {error, {server_error, "handler error", undefined}}),
-            ?LOG_REQUEST_bad_request(Mod, self(), Request, {Error, Reason, erlang:get_stacktrace()}),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, {Error, Reason, erlang:get_stacktrace()}),
             {stop, normal, State}
     end;
 handle_cast({set_idle_timeout, Timeout}, State = #state{timer = Timer}) ->
     NewTimer = Timer#timer{idle_timeout = Timeout},
     {noreply, reset_idle_timeout(State#state{timer = NewTimer})};
-handle_cast({async_reply, ReqContext, Result}, State = #state{async_reply_map = AsyncMap, mod = Mod}) ->
+handle_cast({async_reply, ReqContext, Result}, State = #state{id = Id, async_reply_map = AsyncMap, mod = Mod}) ->
     #context{req_ref = ReqRef} = ReqContext,
     case gb_trees:lookup(ReqRef, AsyncMap) of
         {value, Request} ->
-            ?LOG_REQUEST_async_reply(Mod, self(), Request, {ok, Result}),
+            ?LOG_REQUEST_async_reply(Mod, Id, Request, Result),
             send(ReqContext, {ok, Result}),
             {noreply, State#state{async_reply_map = gb_trees:delete(ReqRef, AsyncMap)}};
         none ->
@@ -200,7 +203,8 @@ code_change(_FromVsn, _ToVsn, State) ->
 %% --------------------------------------------------------------------------------
 %% -- internal functions
 %% @hidden
-do_request(Request = #request{context = Context}, State = #state{async_reply_map = AsyncMap, mod = Mod, state = HandlerState}) ->
+do_request(Request = #request{context = Context}, 
+            State = #state{async_reply_map = AsyncMap, mod = Mod, state = HandlerState, id = Id}) ->
     ReqRef = make_ref(),
     HandlerPid = self(),
     Context1 = Context#context{req_ref = ReqRef, handler_pid = HandlerPid},
@@ -211,32 +215,32 @@ do_request(Request = #request{context = Context}, State = #state{async_reply_map
             hello_metrics:handle_request_time(TimeMS),
             case Value of
                 {reply, Response, NewHandlerState} ->
-                    ?LOG_REQUEST_request(Mod, HandlerPid, Request, Response, TimeMS),
+                    ?LOG_REQUEST_request(Mod, Id, Request, Response, TimeMS),
                     send(Context1, Response),
                     {noreply, State#state{state = NewHandlerState}};
                 {noreply, NewModState} ->
-                    ?LOG_REQUEST_request_no_reply(Mod, HandlerPid, Request, TimeMS),
+                    ?LOG_REQUEST_request_no_reply(Mod, Id, Request, TimeMS),
                     {noreply, State#state{state = NewModState, async_reply_map = gb_trees:enter(ReqRef, Request, AsyncMap)}};
                 {stop, Reason, Response, NewModState} ->
-                    ?LOG_REQUEST_request_stop(Mod, HandlerPid, Request, Response, Reason, TimeMS),
+                    ?LOG_REQUEST_request_stop(Mod, Id, Request, Response, Reason, TimeMS),
                     send(Context1, Response),
                     {stop, Reason, State#state{state = NewModState}};
                 {stop, Reason, NewModState} ->
-                    ?LOG_REQUEST_request_stop_no_reply(Mod, HandlerPid, Request, Reason, TimeMS),
+                    ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, Reason, TimeMS),
                     {stop, Reason, State#state{mod = NewModState}};
                 {stop, NewModState} ->
-                    ?LOG_REQUEST_request_stop_no_reply(Mod, HandlerPid, Request, TimeMS),
+                    ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, TimeMS),
                     {stop, State#state{mod=NewModState}};
                 {ignore, NewModState} ->
-                    ?LOG_REQUEST_request(Mod, HandlerPid, Request, ignore, TimeMS),
+                    ?LOG_REQUEST_request(Mod, Id, Request, ignore, TimeMS),
                     {noreply, State#state{state = NewModState}}
             end;
         {error, {_Code, _Message, _Data} = Reason} ->
-            ?LOG_REQUEST_bad_request(Mod, HandlerPid, Request, Reason),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, Reason),
             send(Context1,  {error, Reason}),
             {stop, normal, State};
         _FalseAnswer ->
-            ?LOG_REQUEST_bad_request(Mod, HandlerPid, Request, _FalseAnswer),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, _FalseAnswer),
             send(Context1, {error, {server_error, "validation returned wrong error format", null}}),
             {stop, normal, State}
     end.

@@ -7,43 +7,58 @@
 -define(DEFAULT_TRACES, [{class, hello}]).
 -define(DEFAULT_META(Meta, LogId), 
         lists:append([[{status_code, element(1, LogId)}, {message_id, element(2, LogId)}], Meta, ?DEFAULT_TRACES])).
--define(REQ_TRACES(Mod, Method), [{class, hello}, {hello_request, api}, {hello_handler, Mod}, {hello_method, Method}]).
--define(BAD_TRACES(Mod, Method), [{class, hello}, {hello_request, error}, {hello_handler, Mod}, {hello_method, Method}]).
 
--define(LOG_REQUEST_async_reply(CallbackModule, HandlerPid, Request, Response),
-    lager:info(?REQ_TRACES(CallbackModule, Request#request.method), 
-               "async reply on ~w. ~s - ~s", 
-               [HandlerPid, hello_log:fmt_request(Request), hello_log:fmt_response(Response)])).
+%% hello_handler specific log macros
+-define(REQ_TRACES(Mod, HandlerId, Request, Response), 
+        lists:append([?REQ_TRACES(Mod, HandlerId, Request), 
+                        [{hello_response, hello_log:fmt_response(Response)}] 
+                     ])).
 
--define(LOG_REQUEST_request(CallbackModule, HandlerPid, Request, Response, Time),
-    lager:info(?REQ_TRACES(CallbackModule, Request#request.method), 
-               "request on ~w. ~s - ~s (~w ms)", 
-               [HandlerPid, hello_log:fmt_request(Request), hello_log:fmt_response(Response), Time])).
+-define(REQ_TRACES(Mod, HandlerId, Request), 
+        lists:append([?DEFAULT_TRACES, 
+                      [ {hello_request, hello_log:fmt_request(Request)}, 
+                        {hello_service_id, HandlerId},
+                        {hello_handler_callback, Mod}
+                      ]
+                     ])).
 
--define(LOG_REQUEST_request_stop(CallbackModule, HandlerPid, Request, Response, Reason, Time),
-    lager:info(?REQ_TRACES(CallbackModule, Request#request.method), 
-               "request on ~w. ~s - ~s (stopped with reason ~w) (~w ms)", 
-               [HandlerPid, hello_log:fmt_request(Request), hello_log:fmt_response(Response), Reason, Time])).
+-define(BAD_TRACES(Mod, Id, Request), [{class, hello}, {hello_request, hello_log:fmt_request(Request)}, 
+                                       {hello_handler_callback, Mod}, {hello_service_id, Id}]).
 
--define(LOG_REQUEST_request_no_reply(CallbackModule, HandlerPid, Request, Time),
-    lager:info(?REQ_TRACES(CallbackModule, Request#request.method),
-               "request on ~w. ~s - noreply (~w ms)", 
-               [HandlerPid, hello_log:fmt_request(Request), Time])).
+-define(LOG_REQUEST_async_reply(CallbackModule, HandlerId, Request, Response),
+    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request, Response), 
+               "Hello handler with callback '~p' and service id '~p' answered async request.", 
+               [CallbackModule, HandlerId])).
 
--define(LOG_REQUEST_request_stop_no_reply(CallbackModule, HandlerPid, Request, Time),
-    lager:info(?REQ_TRACES(CallbackModule, Request#request.method), 
-               "request on ~w. ~s (stopped with reason normal) (~w ms)", 
-               [HandlerPid, hello_log:fmt_request(Request), Time])).
+-define(LOG_REQUEST_request(CallbackModule, HandlerId, Request, Response, Time),
+    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request, Response), 
+               "Hello handler with callback '~p' and service id '~p' answered synced request in ~w ms.", 
+               [CallbackModule, HandlerId, Time])).
 
--define(LOG_REQUEST_request_stop_no_reply(CallbackModule, HandlerPid, Request, Reason, Time),
-    lager:info(?REQ_TRACES(CallbackModule, Request#request.method), 
-               "request on ~w. ~s (stopped with reason ~w) (~w ms)", 
-               [HandlerPid, hello_log:fmt_request(Request), Reason, Time])).
+-define(LOG_REQUEST_request_stop(CallbackModule, HandlerId, Request, Response, Reason, Time),
+    lager:info(lists:append(?REQ_TRACES(CallbackModule, HandlerId, Request, Response), [{hello_error_reason, Reason}]), 
+               "Hello handler with callback '~p' and service id '~p' answered request and stopped with reason ~w in ~w ms.", 
+               [CallbackModule, HandlerId, Reason, Time])).
 
--define(LOG_REQUEST_bad_request(CallbackModule, HandlerPid, Request, Reason),
-    lager:error(?BAD_TRACES(CallbackModule, Request#request.method), 
-                "bad request on ~w. ~s - ~w", 
-                [HandlerPid, hello_log:fmt_request(Request), Reason])).
+-define(LOG_REQUEST_request_no_reply(CallbackModule, HandlerId, Request, Time),
+    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request),
+               "Hello handler with callback '~p' and service id '~p' failed to answer request in ~w ms.", 
+               [CallbackModule, HandlerId, Time])).
+
+-define(LOG_REQUEST_request_stop_no_reply(CallbackModule, HandlerId, Request, Time),
+    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request), 
+               "Hello Handler with callback '~p' and service id '~p' failed to answer request and stopped with reason normal in ~w ms.", 
+               [CallbackModule, HandlerId, Time])).
+
+-define(LOG_REQUEST_request_stop_no_reply(CallbackModule, HandlerId, Request, Reason, Time),
+    lager:info(lists:append(?REQ_TRACES(CallbackModule, HandlerId, Request), [{hello_error_reason, Reason}]), 
+               "Hello handler with callback '~p' and service id '~p' failed to answer request and stopped with reason ~w in ~w ms.", 
+               [CallbackModule, HandlerId, Reason, Time])).
+
+-define(LOG_REQUEST_bad_request(CallbackModule, HandlerId, Request, Reason),
+    lager:error(lists:append(?BAD_TRACES(CallbackModule, HandlerId, Request), [{hello_error_reason, Reason}]), 
+                "Hello handler with callback '~p' and service id '~p' dismissed bad request.", 
+                [CallbackModule, HandlerId])).
 
 -define(PREP_SC(LogId, Msg), lists:append([element(2, LogId), " - ", Msg])).
 

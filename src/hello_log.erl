@@ -26,9 +26,13 @@
 -include("hello.hrl").
 
 %% --------------------------------------------------------------------------------
-%% -- Formaters
+%% -- Formaters for hello_handler
 fmt_request(#request{method = Method, args = Params}) ->
-    <<"method: ", (hello_json:encode(Method))/binary, ", params: ", (hello_json:encode(Params))/binary>>.
+	lists:append(["METHOD: '", binary_to_list(Method), 
+				  "'; ARGS: '", lists:flatten(io_lib:format("~p", [Params]))
+				 ]).
+    %<<"method: ", (hello_json:encode(Method))/binary, ", params: ", (hello_json:encode(Params))/binary>>.
 
 fmt_response(ignore) -> ["ignored"];
-fmt_response(Result) -> io_lib:format("~4096p", [Result]).
+fmt_response({ok, Response}) -> lists:flatten(io_lib:format("~p", [Response]));
+fmt_response(Result) -> lists:flatten(io_lib:format("~4096p", [Result])).
