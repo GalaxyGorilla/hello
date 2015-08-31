@@ -20,5 +20,6 @@
 -define(LOGID18, {"9f4efe6bb336491990b99cc1113adb85", "221200"}).
 -define(LOGID19, {"e61cd5d46b344504aad275c1f4831f90", "214400"}).
 -define(LOGID20, {"cd035f8d88aa45cca84b67a4227c8cd6", "224400"}). %ping timeout
+-define(LOGID21, {"d330d615c9a84f9dadd4a327fa3ac2fe", "220200"}). %
 
 -define(LOGID99, {"99999999999999999999999999999999", "999999"}). %placeholder

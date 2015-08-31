@@ -162,14 +162,14 @@ handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod
                 {ok, State2} -> {noreply, State2};
                 {ok, Reply, State2} -> {reply, Reply, State2};
                 {error, Reason, State2} ->
-                    ?LOG_ERROR("Request '~p' from hello client '~p' failed with reason '~p'.", 
-                        [Request, ClientId, Reason], gen_meta_fields(State2), ?LOGID00),
+                    ?LOG_ERROR("Request from hello client '~p' failed with reason '~p'.", 
+                        [ClientId, Reason], gen_meta_fields(Request, State2), ?LOGID00),
                     {reply, Reason, State2}
             end;
         {error, Reason, NewProtocolState} ->
             NewState = State#client_state{protocol_state = NewProtocolState},
-            ?LOG_ERROR("Creation of request from hello client '~p' failed for call '~p' with reason '~p'.", 
-                        [ClientId, Call, Reason], gen_meta_fields(NewState), ?LOGID01),
+            ?LOG_ERROR("Creation of request from hello client '~p' failed for a call with reason '~p'.", 
+                        [ClientId, Reason], gen_meta_fields(Call, NewState), ?LOGID01),
             {reply, Reason, NewState}
     end;
 handle_call(terminate, _From, State) ->
@@ -191,8 +191,11 @@ handle_info(?PING, State = #client_state{waiting_for_pong = true, keep_alive_int
         {stop, Reason} -> {stop, Reason, State}
     end;
 handle_info(?PING, State = #client_state{transport_mod=TransportModule, transport_state=TransportState,
-                                         keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef}) ->
+                                         keep_alive_interval = KeepAliveInterval, 
+                                         keep_alive_ref = TimerRef, id = ClientId}) ->
     {ok, NewTransportState} = TransportModule:send_request(?PING, ?INTERNAL_SIGNATURE, TransportState),
+    ?LOG_DEBUG("Hello client '~p' sent PING request. Pinging server again in '~p' milliseconds.", 
+                [ClientId, KeepAliveInterval], gen_meta_fields(State), ?LOGID21), 
     timer:cancel(TimerRef),
     {ok, NewTimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
     {noreply, State#client_state{transport_state = NewTransportState, keep_alive_ref = NewTimerRef,
@@ -289,32 +292,32 @@ incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #clien
                     protocol_mod = ProtocolMod, protocol_opts = ProtocolOpts, id = ClientId}) ->
     case hello_proto:decode(ProtocolMod, ProtocolOpts, Signature, BinResponse, response) of
         {ok, #response{id = null, response = Response}} ->
-            ?LOG_DEBUG("Hello client '~p' received notification with content '~p'.", [ClientId, Response], 
-                        gen_meta_fields(State), ?LOGID08), 
+            ?LOG_DEBUG("Hello client '~p' received notification.", [ClientId], 
+                        gen_meta_fields(Response, State), ?LOGID08), 
             notification(Response, State),
             {noreply, State#client_state{transport_state = NewTransportState}};
         {ok, Response = #response{}} ->
-            ?LOG_DEBUG("Hello client '~p' received single response with content '~p'.", [ClientId, Response], 
-                        gen_meta_fields(State), ?LOGID09), 
+            ?LOG_DEBUG("Hello client '~p' received response.", [ClientId], 
+                        gen_meta_fields(Response, State), ?LOGID09), 
             request_reply(Response, AsyncMap, State);
         {ok, Responses = [{ok, #response{}} | _]} ->
-            ?LOG_DEBUG("Hello client '~p' received batch response with content '~p'.", [ClientId, Responses], 
-                        gen_meta_fields(State), ?LOGID10), 
+            ?LOG_DEBUG("Hello client '~p' received batch response.", [ClientId], 
+                        gen_meta_fields(Responses, State), ?LOGID10), 
             NotificationRespopses = [R || {_, #response{id = null} = R} <- Responses],
             NotificationRespopses /= [] andalso notification([R || #response{response = R} <- NotificationRespopses], State),
             Responses1 = [R || {_, R} <- Responses] -- NotificationRespopses,
             request_reply(Responses1, AsyncMap, State#client_state{transport_state = NewTransportState});
         {error, Reason} ->
-            ?LOG_DEBUG("Hello client '~p' failed to decode  '~p' with reason '~p'.", [ClientId, BinResponse, Reason], 
-                        gen_meta_fields(State), ?LOGID11), 
+            ?LOG_DEBUG("Hello client '~p' failed to decode response with reason '~p'.", [ClientId, Reason], 
+                        gen_meta_fields(BinResponse, State), ?LOGID11), 
             {noreply, State#client_state{transport_state = NewTransportState}};
         ignore ->
-            ?LOG_DEBUG("Hello client '~p' ignored binary response '~p'.", [ClientId, BinResponse], 
-                        gen_meta_fields(State), ?LOGID12), 
+            ?LOG_DEBUG("Hello client '~p' ignored decoding binary response.", [ClientId], 
+                        gen_meta_fields(BinResponse, State), ?LOGID12), 
             {noreply, State#client_state{transport_state = NewTransportState}};
         {internal, Message} ->
-            ?LOG_DEBUG("Hello client '~p' received internal message '~p'.", [ClientId, Message], 
-                        gen_meta_fields(State), ?LOGID13), 
+            ?LOG_DEBUG("Hello client '~p' received internal message.", [ClientId], 
+                        gen_meta_fields(Message, State), ?LOGID13), 
             {ok, State1} = ?MODULE:handle_internal(Message, State),
             {noreply, State1}
     end.
@@ -327,21 +330,21 @@ outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod
             Signature = hello_proto:signature(ProtocolMod, ProtocolOpts),
             case TransportModule:send_request(BinRequest, Signature, TransportState) of
                 {ok, NewTransportState} ->
-                    ?LOG_DEBUG("Hello client '~p' sent request '~p'.", [ClientId, Request], 
-                                gen_meta_fields(State), ?LOGID14), 
+                    ?LOG_DEBUG("Hello client '~p' sent request.", [ClientId], 
+                                gen_meta_fields(Request, State), ?LOGID14), 
                     maybe_noreply(NewTransportState, Request, From, AsyncMap, State);
                 {error, Reason, NewTransportState} ->
-                    ?LOG_DEBUG("Hello client '~p' attempted to send binary request '~p' but failed with reason '~p'.", 
-                                [ClientId, BinRequest, Reason], gen_meta_fields(State), ?LOGID15), 
+                    ?LOG_DEBUG("Hello client '~p' attempted to send binary request but failed with reason '~p'.", 
+                                [ClientId, Reason], gen_meta_fields(BinRequest, State), ?LOGID15), 
                     {error, Reason, State#client_state{transport_state = NewTransportState}}
             end;
         {error, Reason, State} -> 
-            ?LOG_WARNING("Hello client '~p' attempted to encode request '~p' but failed with reason '~p'.", 
-                        [ClientId, Request, Reason], gen_meta_fields(State), ?LOGID16), 
+            ?LOG_WARNING("Hello client '~p' attempted to encode request but failed with reason '~p'.", 
+                        [ClientId, Reason], gen_meta_fields(Request, State), ?LOGID16), 
             {error, Reason, State};
         ignore -> 
-            ?LOG_DEBUG("Hello client '~p' ignored sending request '~p'.", [ClientId, Request], 
-                        gen_meta_fields(State), ?LOGID17), 
+            ?LOG_DEBUG("Hello client '~p' ignored sending request.", [ClientId, Request], 
+                        gen_meta_fields(Request, State), ?LOGID17), 
             {ok, State}
     end.
 
@@ -353,8 +356,8 @@ update_map(#request{id = undefined}, _From, AsyncMap) -> AsyncMap;
 update_map(#request{id = RequestId} = Request, From, AsyncMap) -> gb_trees:enter(RequestId, {From, Request}, AsyncMap).
 
 handle_internal(?PONG, State = #client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, id = ClientId}) ->
-    ?LOG_DEBUG("Hello client '~p' received '~p'. Pinging server again in '~p' milliseconds.", 
-                [ClientId, ?PONG, KeepAliveInterval], gen_meta_fields(State), ?LOGID18), 
+    ?LOG_DEBUG("Hello client '~p' received PONG response. Pinging server again in '~p' milliseconds.", 
+                [ClientId, KeepAliveInterval], gen_meta_fields(?PONG, State), ?LOGID18), 
     timer:cancel(TimerRef),
     {ok, NewTimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
     {ok, State#client_state{keep_alive_ref = NewTimerRef, waiting_for_pong = false, last_pong = os:timestamp()}};
@@ -392,7 +395,7 @@ request_reply(Response, AsyncMap, State) ->
             {noreply, State#client_state{async_request_map = NewAsyncMap}};
         {not_found, RequestId, NewAsyncMap} ->
             ?LOG_WARNING("Hello client '~p' got response for non-existing request id '~p'.", 
-                            [RequestId], gen_meta_fields(State), ?LOGID19),
+                            [RequestId], gen_meta_fields(Response, State), ?LOGID19),
             {noreply, State#client_state{async_request_map = NewAsyncMap}}
     end.
 
@@ -421,6 +424,10 @@ request_reply1([#response{id = RequestId, response = Response} | Tail], AsyncMap
         none ->
             {not_found, RequestId, AsyncMap}
     end.
+
+% used to generate meta fields with data blobs
+gen_meta_fields(Msg, State) ->
+    lists:append(gen_meta_fields(State), [{hello_client_message, Msg}]).
 
 gen_meta_fields(#client_state{transport_mod = TransportModule, transport_state = TransportState, id = ClientId}) ->
     lists:append([{hello_client, ClientId}], TransportModule:gen_meta_fields(TransportState)).
