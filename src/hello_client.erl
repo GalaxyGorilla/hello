@@ -426,6 +426,16 @@ request_reply1([#response{id = RequestId, response = Response} | Tail], AsyncMap
     end.
 
 % used to generate meta fields with data blobs
+format_msg(#request{id = ID, method = Method, args = Args}) ->
+    lists:append("REQUEST ID: ", integer_to_list(ID), "; METHOD: ", binary_to_list(Method),
+                    "; ARGS: ", lists:flatten(io_lib:format("~p", [Args])));
+format_msg(#response{id = ID, response = Response}) ->
+    lists:append("REQUEST ID: ", integer_to_list(ID), "; ARGS: ", lists:flatten(io_lib:format("~p", [Response]))).
+
+gen_meta_fields(Request = #request{}, State) ->
+    lists:append(gen_meta_fields(State), [{hello_client_message, format_msg(Request)}]);
+gen_meta_fields(Response = #response{}, State) ->
+    lists:append(gen_meta_fields(State), [{hello_client_message, format_msg(Response)}]);
 gen_meta_fields(Msg, State) ->
     lists:append(gen_meta_fields(State), [{hello_client_message, Msg}]).
 
