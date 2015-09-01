@@ -60,6 +60,13 @@
                 "Hello handler with callback '~p' and service id '~p' dismissed bad request.", 
                 [CallbackModule, HandlerId])).
 
+-define(LOG_WARNING_reason(CallbackModule, HandlerId, Msg, Args, Reason),
+    lager:warning(  lists:append(?DEFAULT_TRACES,
+                    [{hello_handler_callback, CallbackModule},
+                    {hello_error_reason, Reason},
+                    {hello_service_id, HandlerId}]),
+                    Msg, Args)).
+
 -define(PREP_SC(LogId, Msg), lists:append([element(2, LogId), " - ", Msg])).
 
 -define(LOG_DEBUG(Msg, Args, Meta, LogId), lager:debug(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).
