@@ -47,7 +47,8 @@ init_transport(URL, Options) ->
             http_connect_url(URL),
             {ok, #http_state{url = ex_uri:encode(URL), scheme = URL#ex_uri.scheme, path = URL#ex_uri.path, options = ValOpts}};
         {error, Reason} ->
-            ?LOG_ERROR("Invalid options for init http client, reason: ~p", [Reason], [], ?LOGID99),
+            ?LOG_ERROR("Hello http client invoked with invalid options. Terminated with reason '~p'.", [Reason], 
+                        [{hello_error_reason, {error, Reason, Options}}], ?LOGID99),
             {error, Reason}
     end.
 
@@ -61,10 +62,12 @@ terminate_transport(_Reason, _State) ->
     ok.
 
 handle_info({dnssd, _Ref, {resolve,{Host, Port, _Txt}}}, State = #http_state{scheme = Scheme, path = Path}) ->
-    ?LOG_INFO("dnssd Service: ~p:~w", [Host, Port], [], ?LOGID99),
+    ?LOG_INFO("Hello http client: DNS discovery service resolved '~p' to host '~p:~w'.", [Path, Host, Port], 
+                gen_meta_fields(State), ?LOGID99),
     {noreply, State#http_state{url = build_url(Scheme, Host, Path, Port)}};
 handle_info({dnssd, _Ref, Msg}, State) ->
-    ?LOG_INFO("dnssd Msg: ~p", [Msg], [], ?LOGID99),
+    ?LOG_INFO("Hello https client received message '~p' from DNS discovery service.", [Msg], 
+                gen_meta_fields(State), ?LOGID99),
     {noreply, State}.
 
 build_url(Scheme, Host, Path, Port) ->
@@ -108,8 +111,8 @@ http_send(Client, Request, Signarute, State = #http_state{url = URL, options = O
             Client ! {?INCOMING_MSG, {error, HttpCode, State}},
             exit(normal);
         {error, Reason} ->
-            ?LOG_ERROR("error during ibrowse:send_req to, url: ~p, headers: ~p, request: ~p, reason: ~p", 
-                       [URL, Headers, Request, Reason], [], ?LOGID99),
+            ?LOG_ERROR("Hello http client received an error after executing a request to '~p' with reason '~p'.", [URL, Reason],
+                        lists:append(gen_meta_fields(State), [{hello_error_reason, {{request, Request}, {error, Reason}}}]), ?LOGID99), 
             Client ! {?INCOMING_MSG, {error, Reason, State}},
             exit(normal)
     end.

@@ -180,7 +180,7 @@ update_metric({listener, _}, Value) -> hello_metrics:listener(Value);
 update_metric(Key, _) -> ?LOG_INFO("Hello registry received unknown key '~p' for register metric.", [Key], [], ?LOGID99).
 
 do_dnss_register(App, Name, Port) ->
-    ?LOG_INFO("dnss register ~p/~p on port ~p", [App, Name, Port], [], ?LOGID99),
+    ?LOG_INFO("DNS discovery service registered app '~p' with name '~p' on port '~p'", [App, Name, Port], [], ?LOGID99),
     case dnssd:register(Name, <<"_", App/binary, "._tcp">>, Port) of
         {ok, Ref} -> Ref;
         _ -> ok
