@@ -83,10 +83,10 @@ get_handler(Name, Identifier, HandlerMod, HandlerArgs) ->
     case hello_registry:lookup({handler, Name, Identifier}) of
         {error, not_found} ->
             ?LOG_DEBUG("Handler for service ~p and identifier ~p not found, "
-                      "going to start handler.", [Name, Identifier], [], ?LOGID99),
+                      "going to start handler.", [Name, Identifier], [], ?LOGID22),
             start_handler(Identifier, HandlerMod, HandlerArgs);
         {ok, _, Handler} ->
-            ?LOG_DEBUG("Found handler ~p for service ~p and identifier ~p", [Handler, Name, Identifier], [], ?LOGID99),
+            ?LOG_DEBUG("Found handler ~p for service ~p and identifier ~p", [Handler, Name, Identifier], [], ?LOGID23),
             Handler
     end.
 
@@ -143,7 +143,7 @@ handle_cast({request, Request = #request{context = Context}},
     catch
         Error:Reason ->
             send(Context, {error, {server_error, "handler error", undefined}}),
-            ?LOG_REQUEST_bad_request(Mod, Id, Request, {Error, Reason, erlang:get_stacktrace()}),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, {Error, Reason, erlang:get_stacktrace()}, ?LOGID24),
             {stop, normal, State}
     end;
 handle_cast({set_idle_timeout, Timeout}, State = #state{timer = Timer}) ->
@@ -153,12 +153,12 @@ handle_cast({async_reply, ReqContext, Result}, State = #state{id = Id, async_rep
     #context{req_ref = ReqRef} = ReqContext,
     case gb_trees:lookup(ReqRef, AsyncMap) of
         {value, Request} ->
-            ?LOG_REQUEST_async_reply(Mod, Id, Request, Result),
+            ?LOG_REQUEST_async_reply(Mod, Id, Request, Result, ?LOGID25),
             send(ReqContext, {ok, Result}),
             {noreply, State#state{async_reply_map = gb_trees:delete(ReqRef, AsyncMap)}};
         none ->
             ?LOG_WARNING_reason(Mod, Id, "Hello handler with callback module '~p' and service id '~p' got unknown async reply.", 
-                [Mod, Id], {unknown_async_reply, {ReqRef, Result}}),
+                [Mod, Id], {unknown_async_reply, {ReqRef, Result}}, ?LOGID26),
             {noreply, State}
     end.
 
@@ -170,12 +170,12 @@ handle_call(_Call, _From, State) ->
 handle_info({?IDLE_TIMEOUT_MSG, TimerRef}, State = #state{timer = Timer, id = Id, mod = Mod}) 
     when Timer#timer.idle_timeout_ref == TimerRef ->
     ?LOG_WARNING_reason(Mod, Id, "Hello handler with callback module '~p' and service id '~p' is going to stop due to idle timeout.", 
-        [Mod, Id], {error, idle_timeout}),
+        [Mod, Id], {error, idle_timeout}, ?LOGID27),
     NewTimer = Timer#timer{stopped_because_idle = true},
     {stop, normal, State#state{timer = NewTimer}};
 handle_info({?IDLE_TIMEOUT_MSG, OtherRef}, State = #state{mod = Mod, id = Id}) ->
     ?LOG_WARNING_reason(Mod, Id, "Hello handler with callback module '~p' and service id '~p' received unknown idle timeout message.", 
-        [Mod, Id], {error, {unknown_timeout_message, OtherRef}}),
+        [Mod, Id], {error, {unknown_timeout_message, OtherRef}}, ?LOGID28),
     {noreply, State};
 handle_info({?INCOMING_MSG, Request = #request{context = Context}}, State0) ->
     State = reset_idle_timeout(State0),
@@ -219,32 +219,32 @@ do_request(Request = #request{context = Context},
             hello_metrics:handle_request_time(TimeMS),
             case Value of
                 {reply, Response, NewHandlerState} ->
-                    ?LOG_REQUEST_request(Mod, Id, Request, Response, TimeMS),
+                    ?LOG_REQUEST_request(Mod, Id, Request, Response, TimeMS, ?LOGID29),
                     send(Context1, Response),
                     {noreply, State#state{state = NewHandlerState}};
                 {noreply, NewModState} ->
-                    ?LOG_REQUEST_request_no_reply(Mod, Id, Request, TimeMS),
+                    ?LOG_REQUEST_request_no_reply(Mod, Id, Request, TimeMS, ?LOGID30),
                     {noreply, State#state{state = NewModState, async_reply_map = gb_trees:enter(ReqRef, Request, AsyncMap)}};
                 {stop, Reason, Response, NewModState} ->
-                    ?LOG_REQUEST_request_stop(Mod, Id, Request, Response, Reason, TimeMS),
+                    ?LOG_REQUEST_request_stop(Mod, Id, Request, Response, Reason, TimeMS, ?LOGID31),
                     send(Context1, Response),
                     {stop, Reason, State#state{state = NewModState}};
                 {stop, Reason, NewModState} ->
-                    ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, Reason, TimeMS),
+                    ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, Reason, TimeMS, ?LOGID32),
                     {stop, Reason, State#state{mod = NewModState}};
                 {stop, NewModState} ->
-                    ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, TimeMS),
+                    ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, TimeMS, ?LOGID33),
                     {stop, State#state{mod=NewModState}};
                 {ignore, NewModState} ->
-                    ?LOG_REQUEST_request(Mod, Id, Request, ignore, TimeMS),
+                    ?LOG_REQUEST_request(Mod, Id, Request, ignore, TimeMS, ?LOGID34),
                     {noreply, State#state{state = NewModState}}
             end;
         {error, {_Code, _Message, _Data} = Reason} ->
-            ?LOG_REQUEST_bad_request(Mod, Id, Request, Reason),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, Reason, ?LOGID35),
             send(Context1,  {error, Reason}),
             {stop, normal, State};
         _FalseAnswer ->
-            ?LOG_REQUEST_bad_request(Mod, Id, Request, _FalseAnswer),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, _FalseAnswer, ?LOGID36),
             send(Context1, {error, {server_error, "validation returned wrong error format", null}}),
             {stop, normal, State}
     end.

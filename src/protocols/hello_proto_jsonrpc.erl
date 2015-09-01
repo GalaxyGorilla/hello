@@ -126,7 +126,7 @@ decode_single(Object, Type) ->
         decode_single(Type, Object, Info)
     catch
         throw:{_Invalid, #jsonrpc_info{reqid = null}, _Reason} -> %% just a notification, no need to tell anyone
-            ?LOG_ERROR("Hello proto attempted to decode invalid notification object ~p", [Object], 
+            ?LOG_ERROR("Hello proto attempted to decode invalid notification object.", [], 
                         [{hello_error_reason, {invalid_notification, Object}}], ?LOGID99),
             ignore;
         throw:{invalid, Info1, Reason} -> %% an invalid response, this should never happen
