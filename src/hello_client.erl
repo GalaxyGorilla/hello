@@ -162,13 +162,13 @@ handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod
                 {ok, State2} -> {noreply, State2};
                 {ok, Reply, State2} -> {reply, Reply, State2};
                 {error, Reason, State2} ->
-                    ?LOG_ERROR("Request from hello client '~p' failed with reason '~p'.", 
+                    ?LOG_INFO("Request from hello client '~p' failed with reason '~p'.", 
                         [ClientId, Reason], gen_meta_fields(Request, State2), ?LOGID00),
                     {reply, Reason, State2}
             end;
         {error, Reason, NewProtocolState} ->
             NewState = State#client_state{protocol_state = NewProtocolState},
-            ?LOG_ERROR("Creation of request from hello client '~p' failed for a call with reason '~p'.", 
+            ?LOG_INFO("Creation of request from hello client '~p' failed for a call with reason '~p'.", 
                         [ClientId, Reason], gen_meta_fields(Call, NewState), ?LOGID01),
             {reply, Reason, NewState}
     end;
@@ -183,7 +183,7 @@ handle_info(?PING, State = #client_state{waiting_for_pong = true, keep_alive_int
                                          transport_opts = TransportOpts, protocol_opts = ProtocolOpts,
                                          transport_state = TransportState, client_opts = ClientOpts, 
                                          last_pong = LastPong, id = ClientId}) ->
-    ?LOG_ERROR("Error in hello client '~p': There is no PONG answer on PING for ~p msec. Connection will be reestablished.", 
+    ?LOG_INFO("Error in hello client '~p': There is no PONG answer on PING for ~p msec. Connection will be reestablished.", 
                [ClientId, last_pong(LastPong, KeepAliveInterval)], gen_meta_fields(State), ?LOGID20),
     TransportModule:terminate_transport(lost_connection, TransportState),
     case init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts, State) of
@@ -233,7 +233,7 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts)
 init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts, State0) ->
     ClientId = get_client_id(ClientOpts),
     Url = ex_uri:encode(URIRec),
-    ?LOG_INFO("Initializing hello client '~p' on '~p' ...", [ClientId, Url], 
+    ?LOG_DEBUG("Initializing hello client '~p' on '~p' ...", [ClientId, Url], 
                 ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID02), 
     case TransportModule:init_transport(URIRec, TransportOpts) of
         {ok, TransportState} ->
@@ -253,12 +253,12 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts,
                                           waiting_for_pong = false},
                     evaluate_client_options(ClientOpts, State);
                 {error, Reason} -> 
-                    ?LOG_ERROR("Hello client '~p': Unable to initialize protocol because of reason '~p'.",
+                    ?LOG_INFO("Hello client '~p': Unable to initialize protocol because of reason '~p'.",
                                 [ClientId, Reason], ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID03),
                     {stop, Reason}
             end;
         {error, Reason} -> 
-            ?LOG_ERROR("Hello client '~p': Unable to initialize transport because of reason '~p'.",
+            ?LOG_INFO("Hello client '~p': Unable to initialize transport because of reason '~p'.",
                         [ClientId, Reason], ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID04),
             {stop, Reason}
     end.
@@ -270,13 +270,13 @@ evaluate_client_options(ClientOpts, State0) ->
     if
         KeepAliveInterval =< 0 ->
             State1 = State#client_state{keep_alive_interval = -1, id = ClientId},
-            ?LOG_INFO("Hello client '~p' initialized successfully.", [ClientId], 
+            ?LOG_DEBUG("Hello client '~p' initialized successfully.", [ClientId], 
                         gen_meta_fields(State1), ?LOGID05),
             {ok, State1};
         KeepAliveInterval > 0 ->
             {ok, TimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
             State1 = State#client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, id = ClientId},
-            ?LOG_INFO("Hello client '~p' initialized successfully.", [ClientId], gen_meta_fields(State1), ?LOGID06),
+            ?LOG_DEBUG("Hello client '~p' initialized successfully.", [ClientId], gen_meta_fields(State1), ?LOGID06),
             {ok, State1}
     end.
 
@@ -285,7 +285,7 @@ get_client_id(ClientOpts) ->
     element(tuple_size(ClientName), ClientName).
 
 incoming_message({error, Reason, NewTransportState}, State = #client_state{id = ClientId}) -> %%will be logged later
-    ?LOG_ERROR("Hello client '~p' received error notification from transport handler with reason '~p'.", 
+    ?LOG_INFO("Hello client '~p' received error notification from transport handler with reason '~p'.", 
                 [ClientId, Reason], gen_meta_fields(State), ?LOGID07),
     {noreply, State#client_state{transport_state = NewTransportState}};
 incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #client_state{async_request_map = AsyncMap, 
@@ -339,7 +339,7 @@ outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod
                     {error, Reason, State#client_state{transport_state = NewTransportState}}
             end;
         {error, Reason, State} -> 
-            ?LOG_WARNING("Hello client '~p' attempted to encode request but failed with reason '~p'.", 
+            ?LOG_INFO("Hello client '~p' attempted to encode request but failed with reason '~p'.", 
                         [ClientId, Reason], gen_meta_fields(Request, State), ?LOGID16), 
             {error, Reason, State};
         ignore -> 

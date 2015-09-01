@@ -20,12 +20,12 @@
                         {hello_handler_callback, Mod}], LogId)).
 
 -define(LOG_REQUEST_async_reply(CallbackModule, HandlerId, Request, Response, LogId),
-    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request, Response, LogId), 
+    lager:debug(?REQ_TRACES(CallbackModule, HandlerId, Request, Response, LogId), 
                ?PREP_SC(LogId, "Hello handler with callback '~p' and service id '~p' answered async request."), 
                [CallbackModule, HandlerId])).
 
 -define(LOG_REQUEST_request(CallbackModule, HandlerId, Request, Response, Time, LogId),
-    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request, Response, LogId), 
+    lager:debug(?REQ_TRACES(CallbackModule, HandlerId, Request, Response, LogId), 
                ?PREP_SC(LogId, "Hello handler with callback '~p' and service id '~p' answered synced request in ~w ms."), 
                [CallbackModule, HandlerId, Time])).
 
@@ -50,12 +50,12 @@
                [CallbackModule, HandlerId, Reason, Time])).
 
 -define(LOG_REQUEST_bad_request(CallbackModule, HandlerId, Request, Reason, LogId),
-    lager:error(lists:append(?REQ_TRACES(CallbackModule, HandlerId, Request, LogId), [{hello_error_reason, Reason}]), 
+    lager:info(lists:append(?REQ_TRACES(CallbackModule, HandlerId, Request, LogId), [{hello_error_reason, Reason}]), 
                 ?PREP_SC(LogId, "Hello handler with callback '~p' and service id '~p' dismissed bad request."), 
                 [CallbackModule, HandlerId])).
 
 -define(LOG_WARNING_reason(CallbackModule, HandlerId, Msg, Args, Reason, LogId),
-    lager:warning( ?DEFAULT_META( [ {hello_handler_callback, CallbackModule},
+    lager:info( ?DEFAULT_META( [ {hello_handler_callback, CallbackModule},
                                     {hello_error_reason, Reason},
                                     {hello_service_id, HandlerId}
                                     ], LogId)),
