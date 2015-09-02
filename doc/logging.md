@@ -6,8 +6,8 @@ This document describes the status codes used in hello. Status codes should be s
 |-------------------------------------------| --- |
 | Initialization (client)                   | 100 |
 | Initialization (server)                   | 110 |
-| Client message passing (client)           | 200 |
-| Client message passing (server)           | 210 |
+| Message passing (client)                  | 200 |
+| Message passing (server)                  | 210 |
 | Message creation and parsing (client)     | 300 |
 | Message creation and parsing (server)     | 310 |
 | Routing (server only)                     | 400 |
@@ -97,3 +97,45 @@ This document describes the status codes used in hello. Status codes should be s
   * [cd035f8d88aa45cca84b67a4227c8cd6] Error in hello client @CLIENT@: There is no PONG answer on PING for @TIME@ msec. Connection will be reestablished.
 * ___Explanation___: The client sent or received an error message for e.g. informational purposes. This does affect functionality of the client.
 * ___Level___: debug
+
+#### 400200
+
+* ___Messages___: 
+  * [c68287edeaac43fe96f49161eb8f44ba] Handler for service @NAME@ and identifier @ID@ not found. Starting handler.
+  * [d3496f96a1154dad96e5ec469dda164b] Found handler @HANDLER@ for service @NAME@ and identifier @ID@.
+* ___Explanation___: Hello router successfully attempts to find a handler for a request. 
+* ___Level___: debug
+
+#### 210500
+
+* ___Messages___: 
+  * [e2f93d4effd2479fa7a6291b2c9da1dd] Hello handler with callback @CALLBACK@ and service id @ID@ dismissed bad request.
+  * [b3543661a8b2472984874c9c7325fa81] Hello handler with callback @CALLBACK@ and service id @ID@ answered request and stopped with reason @REASON@ in @TIME@ ms.
+  * [aeb8bd41d1ed47048e6ea6056cade3ac] Hello handler with callback @CALLBACK@ and service id @ID@ failed to answer request and stopped with reason ~w in @TIME@ ms.
+  * [aee0c58903824a139d1b1df028c223d6] Hello Handler with callback @CALLBACK@ and service id @ID@ failed to answer request and stopped with reason normal in @TIME@ ms.
+* ___Explanation___: Hello handler attempted to handle an invalid request possibly triggering to stop the handler, e.g. validation procedures noticed an invalid method name or similar.
+* ___Level___: info
+
+#### 210200
+
+* ___Messages___: 
+  * [fc965b4e012648578c379fe0faae3461] Hello handler with callback @CALLBACK@ and service id @ID@ answered async request.
+  * [c457bf8eb8574927bb1285bc32c18aff] Hello handler with callback @CALLBACK@ and service id @ID@ answered synced request in @TIME@ ms.
+* ___Explanation___: Hello handler successfully proceeded a request.
+* ___Level___: debug
+
+#### 210202
+
+* ___Messages___: 
+  * [a7237645a763489591c1559b7ec586b8] Hello handler with callback module @CALLBACK@ and service id @ID@ got unknown async reply.
+  * [b9ab6b39134542fdbf0fabd7a88e8a19] Hello handler with callback module @CALLBACK@ and service id @ID@ received unknown idle timeout message.
+  * [da812da4d818443a872767687edd47f3] Hello handler with callback @CALLBACK@ and service id @ID@ failed to answer request in @TIME@ ms.
+* ___Explanation___: Hello handler noticed difficulties in proceeding a request. This has no impact in the functionality of the handler.
+* ___Level___: debug
+
+#### 210501
+
+* ___Messages___: 
+  * [aabd551dcc334fe093954d19b4dcc445] Hello handler with callback module @CALLBACK@ and service id @ID@ is going to stop due to idle timeout.
+* ___Explanation___: Hello handler received an internal error message leading to functional changes of the handler.
+* ___Level___: info

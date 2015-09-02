@@ -26,7 +26,7 @@
 
 -define(LOG_REQUEST_request(CallbackModule, HandlerId, Request, Response, Time, LogId),
     lager:debug(?REQ_TRACES(CallbackModule, HandlerId, Request, Response, LogId), 
-               ?PREP_SC(LogId, "Hello handler with callback '~p' and service id '~p' answered synced request in ~w ms."), 
+               ?PREP_SC(LogId, "Hello handler with callback '~p' and service id '~p' answered synced request in '~w' ms."), 
                [CallbackModule, HandlerId, Time])).
 
 -define(LOG_REQUEST_request_stop(CallbackModule, HandlerId, Request, Response, Reason, Time, LogId),
@@ -35,7 +35,7 @@
                [CallbackModule, HandlerId, Reason, Time])).
 
 -define(LOG_REQUEST_request_no_reply(CallbackModule, HandlerId, Request, Time, LogId),
-    lager:info(?REQ_TRACES(CallbackModule, HandlerId, Request, LogId),
+    lager:debug(?REQ_TRACES(CallbackModule, HandlerId, Request, LogId),
                ?PREP_SC(LogId, "Hello handler with callback '~p' and service id '~p' failed to answer request in ~w ms."), 
                [CallbackModule, HandlerId, Time])).
 

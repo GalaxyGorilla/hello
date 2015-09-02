@@ -82,11 +82,11 @@
 get_handler(Name, Identifier, HandlerMod, HandlerArgs) ->
     case hello_registry:lookup({handler, Name, Identifier}) of
         {error, not_found} ->
-            ?LOG_DEBUG("Handler for service ~p and identifier ~p not found, "
-                      "going to start handler.", [Name, Identifier], [], ?LOGID22),
+            ?LOG_DEBUG("Handler for service ~p and identifier ~p not found. Starting handler.", 
+                        [Name, Identifier], [], ?LOGID22),
             start_handler(Identifier, HandlerMod, HandlerArgs);
         {ok, _, Handler} ->
-            ?LOG_DEBUG("Found handler ~p for service ~p and identifier ~p", [Handler, Name, Identifier], [], ?LOGID23),
+            ?LOG_DEBUG("Found handler ~p for service ~p and identifier ~p.", [Handler, Name, Identifier], [], ?LOGID23),
             Handler
     end.
 
@@ -236,15 +236,15 @@ do_request(Request = #request{context = Context},
                     ?LOG_REQUEST_request_stop_no_reply(Mod, Id, Request, TimeMS, ?LOGID33),
                     {stop, State#state{mod=NewModState}};
                 {ignore, NewModState} ->
-                    ?LOG_REQUEST_request(Mod, Id, Request, ignore, TimeMS, ?LOGID34),
+                    ?LOG_REQUEST_request(Mod, Id, Request, ignore, TimeMS, ?LOGID29),
                     {noreply, State#state{state = NewModState}}
             end;
         {error, {_Code, _Message, _Data} = Reason} ->
-            ?LOG_REQUEST_bad_request(Mod, Id, Request, Reason, ?LOGID35),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, Reason, ?LOGID24),
             send(Context1,  {error, Reason}),
             {stop, normal, State};
         _FalseAnswer ->
-            ?LOG_REQUEST_bad_request(Mod, Id, Request, _FalseAnswer, ?LOGID36),
+            ?LOG_REQUEST_bad_request(Mod, Id, Request, _FalseAnswer, ?LOGID24),
             send(Context1, {error, {server_error, "validation returned wrong error format", null}}),
             {stop, normal, State}
     end.
