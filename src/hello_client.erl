@@ -440,7 +440,7 @@ gen_meta_fields(Msg, State) ->
     lists:append(gen_meta_fields(State), [{hello_message, Msg}]).
 
 gen_meta_fields(#client_state{transport_mod = TransportModule, transport_state = TransportState, id = ClientId}) ->
-    lists:append([{hello_client, ClientId}], TransportModule:gen_meta_fields(TransportState)).
+    lists:append([{hello_message, ClientId}], TransportModule:gen_meta_fields(TransportState)).
 
 last_pong(undefined, Interval) -> Interval;
 last_pong(Start, _) -> timer:now_diff(os:timestamp(), Start) / 1000.

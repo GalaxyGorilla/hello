@@ -103,7 +103,7 @@ This document describes the status codes used in hello. Status codes should be s
 #### 200410
 
 * ___Messages___: 
-  * [d3cbc27eb6ab43f2b2dfc9114c122054] Hello http client received an error after executing a request to '~p' with reason '~p'.
+  * [d3cbc27eb6ab43f2b2dfc9114c122054] Hello http client received an error after executing a request to @URL@ with reason @REASON@.
 * ___Explanation___: The client sent or received an errors. This does affect functionality of the client.
 * ___Level___: info
 
@@ -119,7 +119,7 @@ This document describes the status codes used in hello. Status codes should be s
 * ___Messages___: 
   * [e2f93d4effd2479fa7a6291b2c9da1dd] Hello handler with callback @CALLBACK@ and service id @ID@ dismissed bad request.
   * [b3543661a8b2472984874c9c7325fa81] Hello handler with callback @CALLBACK@ and service id @ID@ answered request and stopped with reason @REASON@ in @TIME@ ms.
-  * [aeb8bd41d1ed47048e6ea6056cade3ac] Hello handler with callback @CALLBACK@ and service id @ID@ failed to answer request and stopped with reason ~w in @TIME@ ms.
+  * [aeb8bd41d1ed47048e6ea6056cade3ac] Hello handler with callback @CALLBACK@ and service id @ID@ failed to answer request and stopped with reason @REASON@ in @TIME@ ms.
   * [aee0c58903824a139d1b1df028c223d6] Hello Handler with callback @CALLBACK@ and service id @ID@ failed to answer request and stopped with reason normal in @TIME@ ms.
 * ___Explanation___: Hello handler attempted to handle an invalid request possibly triggering to stop the handler, e.g. validation procedures noticed an invalid method name or similar.
 * ___Level___: info
