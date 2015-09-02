@@ -3,7 +3,7 @@
 This document describes the status codes used in hello. Status codes should be seen in logging as a 6-digit number prepended to the actual log message. The first 3 digits describe an abstract logging class while the last 3 digits are aligned to http status codes and define the logging statement more precisely.
 
 | Logging Class                             | ID  |
-|-------------------------------------------| --- |
+|-------------------------------------------|-----|
 | Initialization (app)                      | 000 |
 | Initialization (client)                   | 100 |
 | Initialization (server)                   | 110 |
