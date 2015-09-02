@@ -10,11 +10,11 @@ route(_Context = #context{session_id = Id}, Request = #request{method = Method},
             ?LOG_WARNING("Hello router couldn't find service for a key ~s. Request is dismissed.", [Namespace], 
                             [   {hello_request, hello_log:fmt_request(Request)},
                                 {hello_error_response, {error, not_found, Namespace}}], 
-                         ?LOGID99),
+                         ?LOGID37),
             {error, method_not_found};
         {ok, _, Name} ->
             ?LOG_DEBUG("Hello router resolved namespace '~p' to hello handler '~p'.", [Namespace, Name], 
-                        [{hello_request, hello_log:fmt_request(Request)}], ?LOGID99),
+                        [{hello_request, hello_log:fmt_request(Request)}], ?LOGID38),
             {ok, Name, Id}
     end.
 

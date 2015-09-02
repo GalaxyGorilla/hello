@@ -43,7 +43,47 @@
 
 %MESSAGE IDs and SATUS CODEs for hello_router
 -define(LOGID37, {aee45db4a0a4465687588331edc8bde4, 500500}).
--define(LOGID38, {cfe782643a4e49a581a94c2ae146e683, 500500}).
+-define(LOGID38, {cfe782643a4e49a581a94c2ae146e683, 500200}).
 
+%MESSAGE IDs and SATUS CODEs for hello_http_client
+-define(LOGID39, {a95801c548ad4f508f315334ff79f199, 100400}).
+-define(LOGID40, {eab6276590fc4d84996662f4c13a271a, 211200}).
+-define(LOGID41, {a48b0a9d2aaa477494fade8ace87f20f, 211202}).
+-define(LOGID42, {d3cbc27eb6ab43f2b2dfc9114c122054, 210400}).
 
+%MESSAGE IDs and SATUS CODEs for hello_zmq_client
+-define(LOGID43, {d80498ec152342eba94827f005123d27, 511200}).
+-define(LOGID44, {e6fa0b7a7ffb45f29a359eca6776b369, 510200}).
+-define(LOGID45, {eafe96b96fb447c59ba19d8452ee16f8, 511202}).
 
+%MESSAGE IDs and SATUS CODEs for hello_htp_listener
+-define(LOGID46, {cb26c528ecb2474db3078ca1156ba7ba, 521200}).
+
+%MESSAGE IDs and SATUS CODEs for hello_zmq_listener
+-define(LOGID47, {c0ea6cda30b64f10be3db0ee5fdc22d1, 110500}).
+-define(LOGID48, {dea8dfd8818e432bb61a64ca88e35a9e, 520500}).
+-define(LOGID49, {e849ee8a79b2435394e81b51894a617c, 521202}).
+
+%MESSAGE IDs and SATUS CODEs for hello_metrics
+-define(LOGID50, {c0ea6cda30b64f10be3db0ee5fdc22d1, 700500}).
+
+%MESSAGE IDs and SATUS CODEs for hello_registry
+-define(LOGID51, {bb0ea6d2b9c74a78afa724889ceee0b5, 610500}).
+-define(LOGID52, {da5cd3be4435462dafff47b1bbc34a62, 610501}).
+-define(LOGID53, {a3fcdc9a486247d1af5ea679d0f724e9, 610202}).
+-define(LOGID54, {bd8ad7e2a04940e8bc4fd7417d2907aa, 600200}).
+-define(LOGID55, {ab5f921ed6e7488293241dc27eaf102e, 600500}).
+-define(LOGID56, {b5886b31a45d422bb02422aaf072797b, 700202}).
+-define(LOGID57, {af5e3e79776642e4851709b58e7ea790, 510400}).
+
+%MESSAGE IDs and SATUS CODEs for hello_service
+-define(LOGID58, {eda0efbe7f6d490490e00ae4055629d2, 700500}).
+
+%MESSAGE IDs and SATUS CODEs for hello_supervisor
+-define(LOGID59, {a3b473cec1c841d0ada3232fafe8d081, 610500}).
+-define(LOGID60, {be1432aa9c074facae66b9d6786de2e5, 610501}).
+
+%MESSAGE IDs and SATUS CODEs for hello_supervisor
+-define(LOGID61, {a3b473cec1c841d0ada3232fafe8d081, 610500}).
+-define(LOGID62, {be1432aa9c074facae66b9d6786de2e5, 610501}).
+-define(LOGID63, {be1432aa9c074facae66b9d6786de2e5, 610501}).

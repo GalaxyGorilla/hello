@@ -73,7 +73,7 @@ init(URL) ->
             {ok, State};
         {error, Error} ->
             ?LOG_ERROR("Hello ZeroMQ listener was unable to bind on '~p' because of reason '~p'.", [URL, Error], 
-                        [{hello_transport, zmtp}, {hello_transport_url, ex_uri:encode(URL)}], ?LOGID99),
+                        [{hello_transport, zmtp}, {hello_transport_url, ex_uri:encode(URL)}], ?LOGID47),
             {stop, Error}
     end.
 
@@ -90,7 +90,7 @@ handle_info({zmq, Socket, {Peer, [Signature, Msg]}}, State = #state{url = URL, s
 
 handle_info({zmq, _Socket, {Peer, Msg}}, State) ->
     ?LOG_ERROR("Hello ZeroMQ listener received bad message '~p' from '~p'", [Msg, Peer], 
-                gen_meta_fields(State), ?LOGID99),
+                gen_meta_fields(State), ?LOGID48),
     {noreply, State};
 
 handle_info({hello_msg, _Handler, Peer, Signature, Message}, State = #state{socket = Socket}) ->
@@ -103,7 +103,7 @@ handle_info({'EXIT', _Reason}, State) ->
     {noreply, State};
 handle_info({dnssd, _Ref, Msg}, State) ->
     ?LOG_INFO("Hello ZeroMQ listener ignored message '~p' from DNS discovery service.", [Msg], 
-                gen_meta_fields(State), ?LOGID99),
+                gen_meta_fields(State), ?LOGID49),
     {noreply, State}.
 
 terminate(_Reason, State) ->

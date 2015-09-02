@@ -48,7 +48,7 @@ init_transport(URL, Options) ->
             {ok, #http_state{url = ex_uri:encode(URL), scheme = URL#ex_uri.scheme, path = URL#ex_uri.path, options = ValOpts}};
         {error, Reason} ->
             ?LOG_ERROR("Hello http client invoked with invalid options. Terminated with reason '~p'.", [Reason], 
-                        [{hello_error_reason, {error, Reason, Options}}], ?LOGID99),
+                        [{hello_error_reason, {error, Reason, Options}}], ?LOGID39),
             {error, Reason}
     end.
 
@@ -63,7 +63,7 @@ terminate_transport(_Reason, _State) ->
 
 handle_info({dnssd, _Ref, {resolve,{Host, Port, _Txt}}}, State = #http_state{scheme = Scheme, path = Path}) ->
     ?LOG_INFO("Hello http client: DNS discovery service resolved '~p' to host '~p:~w'.", [Path, Host, Port], 
-                gen_meta_fields(State), ?LOGID99),
+                gen_meta_fields(State), ?LOGID40),
     {noreply, State#http_state{url = build_url(Scheme, Host, Path, Port)}};
 handle_info({dnssd, _Ref, Msg}, State) ->
     ?LOG_INFO("Hello https client received message '~p' from DNS discovery service.", [Msg], 
