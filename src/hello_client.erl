@@ -253,12 +253,12 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts,
                                           waiting_for_pong = false},
                     evaluate_client_options(ClientOpts, State);
                 {error, Reason} -> 
-                    ?LOG_INFO("Hello client '~p': Unable to initialize protocol because of reason '~p'.",
+                    ?LOG_INFO("Hello client '~p' is unable to initialize protocol because of reason '~p'.",
                                 [ClientId, Reason], ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID03),
                     {stop, Reason}
             end;
         {error, Reason} -> 
-            ?LOG_INFO("Hello client '~p': Unable to initialize transport because of reason '~p'.",
+            ?LOG_INFO("Hello client '~p' unable to initialize transport because of reason '~p'.",
                         [ClientId, Reason], ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID04),
             {stop, Reason}
     end.
@@ -276,7 +276,7 @@ evaluate_client_options(ClientOpts, State0) ->
         KeepAliveInterval > 0 ->
             {ok, TimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
             State1 = State#client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, id = ClientId},
-            ?LOG_DEBUG("Hello client '~p' initialized successfully.", [ClientId], gen_meta_fields(State1), ?LOGID06),
+            ?LOG_DEBUG("Hello client '~p' initialized successfully with keep alive.", [ClientId], gen_meta_fields(State1), ?LOGID06),
             {ok, State1}
     end.
 
@@ -285,7 +285,7 @@ get_client_id(ClientOpts) ->
     element(tuple_size(ClientName), ClientName).
 
 incoming_message({error, Reason, NewTransportState}, State = #client_state{id = ClientId}) -> %%will be logged later
-    ?LOG_INFO("Hello client '~p' received error notification from transport handler with reason '~p'.", 
+    ?LOG_DEBUG("Hello client '~p' received error notification from transport handler with reason '~p'.", 
                 [ClientId, Reason], gen_meta_fields(State), ?LOGID07),
     {noreply, State#client_state{transport_state = NewTransportState}};
 incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #client_state{async_request_map = AsyncMap, 
@@ -297,7 +297,7 @@ incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #clien
             notification(Response, State),
             {noreply, State#client_state{transport_state = NewTransportState}};
         {ok, Response = #response{}} ->
-            ?LOG_DEBUG("Hello client '~p' received response.", [ClientId], 
+            ?LOG_DEBUG("Hello client '~p' received single response.", [ClientId], 
                         gen_meta_fields(Response, State), ?LOGID09), 
             request_reply(Response, AsyncMap, State);
         {ok, Responses = [{ok, #response{}} | _]} ->
@@ -308,7 +308,7 @@ incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #clien
             Responses1 = [R || {_, R} <- Responses] -- NotificationRespopses,
             request_reply(Responses1, AsyncMap, State#client_state{transport_state = NewTransportState});
         {error, Reason} ->
-            ?LOG_DEBUG("Hello client '~p' failed to decode response with reason '~p'.", [ClientId, Reason], 
+            ?LOG_INFO("Hello client '~p' failed to decode response with reason '~p'.", [ClientId, Reason], 
                         gen_meta_fields(BinResponse, State), ?LOGID11), 
             {noreply, State#client_state{transport_state = NewTransportState}};
         ignore ->
@@ -334,7 +334,7 @@ outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod
                                 gen_meta_fields(Request, State), ?LOGID14), 
                     maybe_noreply(NewTransportState, Request, From, AsyncMap, State);
                 {error, Reason, NewTransportState} ->
-                    ?LOG_DEBUG("Hello client '~p' attempted to send binary request but failed with reason '~p'.", 
+                    ?LOG_INFO("Hello client '~p' attempted to send binary request but failed with reason '~p'.", 
                                 [ClientId, Reason], gen_meta_fields(BinRequest, State), ?LOGID15), 
                     {error, Reason, State#client_state{transport_state = NewTransportState}}
             end;
@@ -343,7 +343,7 @@ outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod
                         [ClientId, Reason], gen_meta_fields(Request, State), ?LOGID16), 
             {error, Reason, State};
         ignore -> 
-            ?LOG_DEBUG("Hello client '~p' ignored sending request.", [ClientId, Request], 
+            ?LOG_DEBUG("Hello client '~p' attempted to encode request but ignored sending request.", [ClientId, Request], 
                         gen_meta_fields(Request, State), ?LOGID17), 
             {ok, State}
     end.

@@ -1,28 +1,28 @@
 -define(LOGID99, {ffffffffffffffffffffffffffffffff, 999999}). %placeholder
 
 %MESSAGE IDs and STATUS CODEs for hello_client
--define(LOGID00, {ec504cee59b245c0861b78ccd936b856, 200400}). %message passing
--define(LOGID01, {d7a051ed5dab4b50afa67ca5fadd6077, 300400}). %message building
--define(LOGID02, {ff6a6c3ae0734a65b2845c39d223b249, 100100}). %client initialization
--define(LOGID03, {bd8b9bc7d0ef48a98f6286c779781985, 101409}). 
--define(LOGID04, {a55b446c103646b2a84543a907c13378, 102409}). 
--define(LOGID05, {b31ad32a76a94d78b866b2e168f9f7d3, 100101}). 
--define(LOGID06, {c2ba31819c384d76966d6bdb0cf02250, 100101}). 
--define(LOGID07, {d406dffdf263429eac4e64b7c52f7276, 201400}). 
--define(LOGID08, {e9f0397b5b814c3abd55f3a474815f6c, 211200}).
--define(LOGID09, {f819220efa73409fa896aaafc0c21d30, 212200}).
--define(LOGID10, {a953af5734984f39b1c26a3541a1f48f, 213200}).
--define(LOGID11, {c2763c7aba514282a48a87dee13e7738, 210400}).
--define(LOGID12, {a887733cce7949f5a1d041441ccdfdfc, 210204}).
--define(LOGID13, {bc9ed80e61cb441c952422c649a3ff3e, 220200}).
--define(LOGID14, {bfde238fb72f420996cb52eaeda474df, 210200}).
--define(LOGID15, {cb4c75e200f74a279ca3373e37eb7f81, 210400}).
--define(LOGID16, {b68c94425c1f40aca74ef33e13eccbfc, 210409}).
--define(LOGID17, {d77a63a5b17c4f0499fc9360083aa7a1, 210202}).
--define(LOGID18, {ef4efe6bb336491990b99cc1113adb85, 221200}).
--define(LOGID19, {e61cd5d46b344504aad275c1f4831f90, 214400}).
--define(LOGID20, {cd035f8d88aa45cca84b67a4227c8cd6, 224400}). %ping timeout
--define(LOGID21, {d330d615c9a84f9dadd4a327fa3ac2fe, 220200}). %
+-define(LOGID00, {ec504cee59b245c0861b78ccd936b856, 200400}). 
+-define(LOGID01, {d7a051ed5dab4b50afa67ca5fadd6077, 300400}).
+-define(LOGID02, {ff6a6c3ae0734a65b2845c39d223b249, 100200}). 
+-define(LOGID03, {bd8b9bc7d0ef48a98f6286c779781985, 100400}). 
+-define(LOGID04, {a55b446c103646b2a84543a907c13378, 100400}). 
+-define(LOGID05, {b31ad32a76a94d78b866b2e168f9f7d3, 100200}). 
+-define(LOGID06, {c2ba31819c384d76966d6bdb0cf02250, 100200}). 
+-define(LOGID07, {d406dffdf263429eac4e64b7c52f7276, 200202}). 
+-define(LOGID08, {e9f0397b5b814c3abd55f3a474815f6c, 200200}).
+-define(LOGID09, {f819220efa73409fa896aaafc0c21d30, 200200}).
+-define(LOGID10, {a953af5734984f39b1c26a3541a1f48f, 200200}).
+-define(LOGID11, {c2763c7aba514282a48a87dee13e7738, 300401}).
+-define(LOGID12, {a887733cce7949f5a1d041441ccdfdfc, 200202}).
+-define(LOGID13, {bc9ed80e61cb441c952422c649a3ff3e, 200201}).
+-define(LOGID14, {bfde238fb72f420996cb52eaeda474df, 200200}).
+-define(LOGID15, {cb4c75e200f74a279ca3373e37eb7f81, 200400}).
+-define(LOGID16, {b68c94425c1f40aca74ef33e13eccbfc, 300400}).
+-define(LOGID17, {d77a63a5b17c4f0499fc9360083aa7a1, 300202}).
+-define(LOGID18, {ef4efe6bb336491990b99cc1113adb85, 200202}).
+-define(LOGID19, {e61cd5d46b344504aad275c1f4831f90, 200202}).
+-define(LOGID20, {cd035f8d88aa45cca84b67a4227c8cd6, 200401}). 
+-define(LOGID21, {d330d615c9a84f9dadd4a327fa3ac2fe, 200201}). 
 
 %MESSAGE IDs and SATUS CODEs for hello_handler
 -define(LOGID22, {c68287edeaac43fe96f49161eb8f44ba, 101202}). 
