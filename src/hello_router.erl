@@ -7,11 +7,14 @@ route(_Context = #context{session_id = Id}, Request = #request{method = Method},
     Namespace = get_namespace(Method),
     case hello_binding:lookup(ExURI, Namespace) of
         {error, not_found} ->
-            ?LOG_WARNING("Route couldn't find a service for a key ~s not found", [Namespace], [], ?LOGID99),
+            ?LOG_WARNING("Hello router couldn't find service for a key ~s. Request is dismissed.", [Namespace], 
+                            [   {hello_request, hello_log:fmt_request(Request)},
+                                {hello_error_response, {error, not_found, Namespace}}], 
+                         ?LOGID99),
             {error, method_not_found};
         {ok, _, Name} ->
-            ?LOG_DEBUG("Request ~p in namespace ~p will have been routed to ~p", 
-                        [Request, Namespace, Name], [], ?LOGID99),
+            ?LOG_DEBUG("Hello router resolved namespace '~p' to hello handler '~p'.", [Namespace, Name], 
+                        [{hello_request, hello_log:fmt_request(Request)}], ?LOGID99),
             {ok, Name, Id}
     end.
 

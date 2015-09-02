@@ -61,6 +61,7 @@
                                     ], LogId)),
                                     Msg, Args).
 
+%% Generic 
 -define(PREP_SC(LogId, Msg), lists:append([integer_to_list(element(2, LogId)), " - ", Msg])).
 
 -define(LOG_DEBUG(Msg, Args, Meta, LogId), lager:debug(?DEFAULT_META(Meta, LogId), ?PREP_SC(LogId, Msg), Args)).

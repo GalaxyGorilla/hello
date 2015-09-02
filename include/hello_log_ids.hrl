@@ -1,3 +1,5 @@
+-define(LOGID99, {ffffffffffffffffffffffffffffffff, 999999}). %placeholder
+
 %MESSAGE IDs and STATUS CODEs for hello_client
 -define(LOGID00, {ec504cee59b245c0861b78ccd936b856, 200400}). %message passing
 -define(LOGID01, {d7a051ed5dab4b50afa67ca5fadd6077, 300400}). %message building
@@ -39,4 +41,9 @@
 -define(LOGID35, {f37d8d8df4d74972a71acdcaeeb1ce40, 400500}).
 -define(LOGID36, {f834c0541b024187bf6aacde701e0b88, 400500}).
 
--define(LOGID99, {ffffffffffffffffffffffffffffffff, 999999}). %placeholder
+%MESSAGE IDs and SATUS CODEs for hello_router
+-define(LOGID37, {aee45db4a0a4465687588331edc8bde4, 500500}).
+-define(LOGID38, {cfe782643a4e49a581a94c2ae146e683, 500500}).
+
+
+
