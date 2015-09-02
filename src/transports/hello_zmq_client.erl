@@ -55,7 +55,7 @@ terminate_transport(_Reason, #zmq_state{socket = Socket}) ->
 handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info({dnssd, _Ref, {resolve,{Host, Port, _Txt}}}, State = #zmq_state{uri = URI, socket = Socket}) ->
-    ?LOG_INFO("Hello ZeroMQ client: DNS discovery service resolved '~p' to host '~p:~w'.", [URI, Host, Port], 
+    ?LOG_INFO("Hello ZeroMQ client: DNS discovery service resolved path '~p' to host '~p:~w'.", [URI, Host, Port], 
                 gen_meta_fields(State), ?LOGID43),
     Protocol = zmq_protocol(URI),
     R = ezmq:connect(Socket, tcp, clean_host(Host), Port, [Protocol]),

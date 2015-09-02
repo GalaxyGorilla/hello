@@ -103,9 +103,9 @@ http_chunked_loop(Req, State) ->
             case cowboy_req:chunk(BinResp, Req) of
                 ok -> http_chunked_loop(Req, State);
                 R -> 
-                    ?LOG_ERROR("Hello http listener received an error while streaming the response body.", [], 
+                    ?LOG_INFO("Hello http listener received an error while streaming the response body.", [], 
                                 lists:append([{hello_error_reason, {{request, Req}, {response, BinResp}, {error, R}}}], 
-                                gen_meta_fields(State)), ?LOGID99),
+                                gen_meta_fields(State)), ?LOGID46),
                     {ok, Req, State}
             end
     end.

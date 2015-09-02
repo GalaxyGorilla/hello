@@ -47,13 +47,13 @@ get_roles() ->
             Exess = lists:subtract(Role, [client, server]),
             if
                 length(Exess) > 0 -> 
-                    ?LOG_WARNING("Hello supervisor got invalid list '~p' of client roles.", [Role], 
+                    ?LOG_INFO("Hello supervisor got invalid list '~p' of roles.", [Role], 
                             [{hello_error_reason, invalid_roles}], ?LOGID59);
                 true              -> ok
             end,
             lists:subtract(Role, Exess);
         {ok, Role} ->
-            ?LOG_WARNING("Hello supervisor got invalid list '~p' of client roles.", [Role], 
+            ?LOG_INFO("Hello supervisor got invalid role '~p'.", [Role], 
                             [{hello_error_reason, invalid_roles}], ?LOGID60),
             [client, server];
         undefined ->
