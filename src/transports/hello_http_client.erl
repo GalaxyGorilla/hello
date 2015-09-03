@@ -47,7 +47,7 @@ init_transport(URL, Options) ->
             http_connect_url(URL),
             {ok, #http_state{url = ex_uri:encode(URL), scheme = URL#ex_uri.scheme, path = URL#ex_uri.path, options = ValOpts}};
         {error, Reason} ->
-            ?LOG_ERROR("Hello http client invoked with invalid options. Terminated with reason '~p'.", [Reason], 
+            ?LOG_INFO("Hello http client invoked with invalid options. Terminated with reason '~p'.", [Reason], 
                         [{hello_error_reason, {error, Reason, Options}}], ?LOGID39),
             {error, Reason}
     end.

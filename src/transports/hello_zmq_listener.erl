@@ -89,7 +89,7 @@ handle_info({zmq, Socket, {Peer, [Signature, Msg]}}, State = #state{url = URL, s
     {noreply, State};
 
 handle_info({zmq, _Socket, {Peer, Msg}}, State) ->
-    ?LOG_ERROR("Hello ZeroMQ listener received bad message '~p' from '~p'.", [Msg, Peer], 
+    ?LOG_INFO("Hello ZeroMQ listener received bad message '~p' from '~p'.", [Msg, Peer], 
                 gen_meta_fields(State), ?LOGID48),
     {noreply, State};
 
@@ -102,7 +102,7 @@ handle_info({hello_closed, _HandlerPid, _Peer}, State) ->
 handle_info({'EXIT', _Reason}, State) ->
     {noreply, State};
 handle_info({dnssd, _Ref, Msg}, State) ->
-    ?LOG_INFO("Hello ZeroMQ listener ignored message '~p' from DNS discovery service.", [Msg], 
+    ?LOG_DEBUG("Hello ZeroMQ listener ignored message '~p' from DNS discovery service.", [Msg], 
                 gen_meta_fields(State), ?LOGID49),
     {noreply, State}.
 
