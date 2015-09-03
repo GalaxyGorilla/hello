@@ -1,6 +1,6 @@
 ### Logging in hello
 
-This document describes the status codes used in hello. Status codes should be seen in logging as a 6-digit number prepended to the actual log message. The first 3 digits describe an abstract logging class while the last 3 digits are aligned to http status codes and define the logging statement more precisely.
+##### This document describes the status codes used in hello. Status codes should be seen in logging as a 6-digit number prepended to the actual log message. The first 3 digits describe an abstract logging class while the last 3 digits are aligned to http status codes and define the logging statement more precisely.
 
 | Logging Class                             | ID  |
 |-------------------------------------------|-----|
@@ -20,8 +20,8 @@ This document describes the status codes used in hello. Status codes should be s
 #### 200400
 
 * ___Messages___: 
-  * [ec504cee59b245c0861b78ccd936b856] Request from hello client @Client@ failed with reason @REASON@.
-  * [cb4c75e200f74a279ca3373e37eb7f81] Hello client @CLIENT attempted to send binary request but failed with reason @REASON@.
+  * [ec504cee59b245c0861b78ccd936b856] Request from hello client @CLIENT@ failed with reason @REASON@.
+  * [cb4c75e200f74a279ca3373e37eb7f81] Hello client @CLIENT@ attempted to send binary request but failed with reason @REASON@.
 * ___Explanation___: Hello client attempted to send a request but failed due to issues with encoding or transport specific reasons.
 * ___Level___: info
 
@@ -51,16 +51,16 @@ This document describes the status codes used in hello. Status codes should be s
 #### 100200
 
 * ___Messages___: 
-  * [ff6a6c3ae0734a65b2845c39d223b249] Initializing hello client @Client@ on @URL@ ...
-  * [b31ad32a76a94d78b866b2e168f9f7d3] Hello client @Client@ initialized successfully.
-  * [c2ba31819c384d76966d6bdb0cf02250] Hello client @Client@ initialized successfully with keep alive.
+  * [ff6a6c3ae0734a65b2845c39d223b249] Initializing hello client @CLIENT@ on @URL@ ...
+  * [b31ad32a76a94d78b866b2e168f9f7d3] Hello client @CLIENT@ initialized successfully.
+  * [c2ba31819c384d76966d6bdb0cf02250] Hello client @CLIENT@ initialized successfully with keep alive.
 * ___Explanation___: Hello client initializing process. Protocol and transport state are initialized.
 * ___Level___: debug
 
 #### 100400
 
 * ___Messages___: 
-  * [bd8b9bc7d0ef48a98f6286c779781985] Hello client @Client@ is unable to initialize protocol because of reason @REASON@.
+  * [bd8b9bc7d0ef48a98f6286c779781985] Hello client @CLIENT@ is unable to initialize protocol because of reason @REASON@.
   * [a55b446c103646b2a84543a907c13378] Hello client @CLIENT@ unable to initialize transport because of reason @REASON@.
 * ___Explanation___: Hello client protocol or transport handler returned an error reason @REASON@.
 * ___Level___: info
