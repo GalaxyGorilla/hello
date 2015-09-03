@@ -142,7 +142,7 @@ decode_single(request, #{<<"method">> := Method} = Object, #jsonrpc_info{reqid =
                  Obj = #{} when JsonRPC > ?JSONRPC_1 -> Obj;
                  _ -> throw({invalid, Info, <<"\"params\" must be array or object">>})
              end,
-    Request = #request{method = Method, type=type(ReqId), args = Params, proto_data = Info},
+    Request = #request{method = Method, type=type(ReqId), args = Params, proto_data = Info, id = ReqId},
     {ok, Request};
 decode_single(request, #{<<"method">> := _Method} = _Object, Info) ->
     throw({invalid, Info, <<"\"method\" must be a string">>});

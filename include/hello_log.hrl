@@ -10,12 +10,11 @@
 
 %% hello_handler specific log macros
 -define(REQ_TRACES(Mod, HandlerId, Request, RequestStatus, Response, LogId), 
-        lists:append([?REQ_TRACES(Mod, HandlerId, Request, RequestStatus, LogId), 
-                        [{hello_response, hello_log:fmt_response(Response)}] 
-                     ])).
+        lists:append([?REQ_TRACES(Mod, HandlerId, Request, RequestStatus, LogId), [{hello_response, hello_log:format(Response)}]])).
 
 -define(REQ_TRACES(Mod, HandlerId, Request, RequestStatus, LogId), 
-        ?DEFAULT_META([ {hello_request, hello_log:fmt_request(Request)}, 
+        ?DEFAULT_META([ {hello_request, hello_log:format(Request)}, 
+                        {hello_request_id, hello_log:get_id(Request)},
                         {hello_request_status, RequestStatus},
                         {hello_service_id, HandlerId},
                         {hello_handler_callback, Mod}], LogId)).

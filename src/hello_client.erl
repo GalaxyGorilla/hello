@@ -301,12 +301,13 @@ incoming_message({ok, Signature, BinResponse, NewTransportState}, State = #clien
                         gen_meta_fields(Response, State), ?LOGID09), 
             request_reply(Response, AsyncMap, State);
         {ok, Responses = [{ok, #response{}} | _]} ->
+            Responses1 = [R || {_, R} <- Responses],
             ?LOG_DEBUG("Hello client '~p' received batch response.", [ClientId], 
-                        gen_meta_fields(Responses, State), ?LOGID10), 
-            NotificationRespopses = [R || {_, #response{id = null} = R} <- Responses],
-            NotificationRespopses /= [] andalso notification([R || #response{response = R} <- NotificationRespopses], State),
-            Responses1 = [R || {_, R} <- Responses] -- NotificationRespopses,
-            request_reply(Responses1, AsyncMap, State#client_state{transport_state = NewTransportState});
+                        gen_meta_fields(Responses1, State), ?LOGID10), 
+            NotificationResponses = [R || {_, #response{id = null} = R} <- Responses],
+            NotificationResponses /= [] andalso notification([R || #response{response = R} <- NotificationResponses], State),
+            Responses2 = Responses1 -- NotificationResponses,
+            request_reply(Responses2, AsyncMap, State#client_state{transport_state = NewTransportState});
         {error, Reason} ->
             ?LOG_INFO("Hello client '~p' failed to decode response with reason '~p'.", [ClientId, Reason], 
                         gen_meta_fields(BinResponse, State), ?LOGID11), 
@@ -425,22 +426,23 @@ request_reply1([#response{id = RequestId, response = Response} | Tail], AsyncMap
             {not_found, RequestId, AsyncMap}
     end.
 
-% used to generate meta fields with data blobs
-format_msg(#request{id = ID, method = Method, args = Args}) ->
-    lists:append(["ID: ", integer_to_list(ID), "; METHOD: ", binary_to_list(Method),
-                    "; ARGS: ", lists:flatten(io_lib:format("~p", [Args]))]);
-format_msg(#response{id = ID, response = Response}) ->
-    lists:append(["ID: ", integer_to_list(ID), "; RESPONSE: ", lists:flatten(io_lib:format("~p", [Response]))]).
-
+gen_meta_fields(Requests = [ #request{} | _ ], State) ->
+    lists:append(gen_meta_fields(State), [  {hello_request, hello_log:format(Requests)}, 
+                                            {hello_request_id, hello_log:get_id(Requests)}]);
 gen_meta_fields(Request = #request{}, State) ->
-    lists:append(gen_meta_fields(State), [{hello_request, format_msg(Request)}]);
+    lists:append(gen_meta_fields(State), [  {hello_request, hello_log:format(Request)}, 
+                                            {hello_request_id, hello_log:get_id(Request)}]);
+gen_meta_fields(Responses = [ #response{} | _ ], State) ->
+    lists:append(gen_meta_fields(State), [  {hello_response, hello_log:format(Responses)}, 
+                                            {hello_request_id, hello_log:get_id(Responses)}]);
 gen_meta_fields(Response = #response{}, State) ->
-    lists:append(gen_meta_fields(State), [{hello_response, format_msg(Response)}]);
+    lists:append(gen_meta_fields(State), [  {hello_response, hello_log:format(Response)}, 
+                                            {hello_request_id, hello_log:get_id(Response)}]);
 gen_meta_fields(Msg, State) ->
     lists:append(gen_meta_fields(State), [{hello_message, Msg}]).
 
 gen_meta_fields(#client_state{transport_mod = TransportModule, transport_state = TransportState, id = ClientId}) ->
-    lists:append([{hello_message, ClientId}], TransportModule:gen_meta_fields(TransportState)).
+    lists:append([{hello_client_id, ClientId}], TransportModule:gen_meta_fields(TransportState)).
 
 last_pong(undefined, Interval) -> Interval;
 last_pong(Start, _) -> timer:now_diff(os:timestamp(), Start) / 1000.
