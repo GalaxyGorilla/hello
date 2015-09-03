@@ -37,8 +37,8 @@
 -include("hello_log.hrl").
 -include_lib("ex_uri/include/ex_uri.hrl").
 
--define(DEFAULT_TIMEOUT, 10000).
 -define(HELLO_CLIENT_DEFAULT_META(ClientId, Url), [{hello_client, ClientId}, {hello_transport_url, Url}]).
+-define(DEFAULT_TIMEOUT, application:get_env(hello, client_timeout, 10000)).
 
 -type client_name()  :: {local, atom()} | {global, atom()} | {via, atom(), term()}.
 -type start_result() :: {ok, pid()} | ignore | {error, {already_started, pid()} | term()}.
