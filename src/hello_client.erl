@@ -30,7 +30,7 @@
          call/2, call/3]).
 
 %% for tests
--export([handle_internal/2]).
+-export([outgoing_message/3, handle_internal/2]).
 -export([gen_meta_fields/1]).
 
 -include("hello.hrl").
@@ -124,6 +124,7 @@ timeout_call(Client, Call, Timeout) ->
 -record(client_state, {
     id :: term(),
     uri_rec :: #ex_uri{},
+    metrics_info :: {atom(), atom(), atom()},
     transport_opts :: term(),
     transport_mod :: module(),
     transport_state :: term(),
@@ -156,31 +157,29 @@ init({URI, TransportOpts, ProtocolOpts, ClientOpts}) ->
 %% @hidden
 handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod, 
                                                       protocol_state = ProtocolState, 
+                                                      metrics_info = MetricsInfo,
                                                       id = ClientId}) ->
-    Start = os:timestamp(),
-    case hello_proto:build_request(Call, ProtocolMod, ProtocolState) of
+    {Time1, Value1} = timer:tc(hello_proto, build_request, [Call, ProtocolMod, ProtocolState]),
+    case Value1 of
         {ok, Request, NewProtocolState} ->
             State1 = State#client_state{protocol_state = NewProtocolState},
-            case outgoing_message(Request, From, State1) of
+            {Time2, Value2} = timer:tc(outgoing_message, [Request, From, State1]),
+            case Value2 of
                 {ok, State2} ->
-                    hello_metrics:client_ok_request(ClientId),
-                    hello_metrics:client_request_handle_time(ClientId, timer:now_diff(os:timestamp(), Start) / 1000),
+                    hello_metrics:update_client_request(success, MetricsInfo, (Time1 + Time2) / 1000),
                     {noreply, State2};
                 {ok, Reply, State2} -> 
-                    hello_metrics:client_ok_request(ClientId),
-                    hello_metrics:client_request_handle_time(ClientId, timer:now_diff(os:timestamp(), Start) / 1000),
+                    hello_metrics:update_client_request(success, MetricsInfo, (Time1 + Time2) / 1000),
                     {reply, Reply, State2};
                 {error, Reason, State2} ->
                     ?LOG_ERROR("~p / ~p : request failed with reason ~p",
                                [ClientId, hello_log:get_method(Request), Reason], gen_meta_fields(Request, State2), ?LOGID00),
-                    hello_metrics:client_error_request(ClientId),
-                    hello_metrics:client_request_handle_time(ClientId, timer:now_diff(os:timestamp(), Start) / 1000),
+                    hello_metrics:update_client_request(error, MetricsInfo, (Time1 + Time2) / 1000),
                     {reply, Reason, State2}
             end;
         {error, Reason, NewProtocolState} ->
             NewState = State#client_state{protocol_state = NewProtocolState},
-            hello_metrics:client_error_request(ClientId),
-            hello_metrics:client_request_handle_time(ClientId, timer:now_diff(os:timestamp(), Start) / 1000),
+            hello_metrics:update_client_request(error, MetricsInfo, Time1 / 1000),
             ?LOG_ERROR("~p : creation of request failed with reason ~p",
                        [ClientId, Reason], gen_meta_fields(Call, NewState), ?LOGID01),
             {reply, Reason, NewState}
@@ -195,26 +194,26 @@ handle_info(?PING, State = #client_state{waiting_for_pong = true, keep_alive_int
                                          uri_rec = URIRec, transport_mod = TransportModule, 
                                          transport_opts = TransportOpts, protocol_opts = ProtocolOpts,
                                          transport_state = TransportState, client_opts = ClientOpts, 
-                                         last_pong = LastPong, id = ClientId}) ->
+                                         metrics_info = MetricsInfo, last_pong = LastPong, id = ClientId}) ->
     ?LOG_ERROR("~p : Keep alive timeout after ~p ms. Connection will be reestablished.",
                [ClientId, last_pong(LastPong, KeepAliveInterval)], gen_meta_fields(State), ?LOGID20),
-    hello_metrics:client_ping_pong_latency(ClientId, timer:now_diff(os:timestamp(), LastPong) / 1000),
+    hello_metrics:update_client_request(ping, MetricsInfo, hello_metrics:timestamp(milli_seconds) - LastPong),
     TransportModule:terminate_transport(lost_connection, TransportState),
     case init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts, State) of
         {ok, NewState} -> {noreply, NewState};
         {stop, Reason} -> {stop, Reason, State}
     end;
 handle_info(?PING, State = #client_state{transport_mod=TransportModule, transport_state=TransportState,
-                                         keep_alive_interval = KeepAliveInterval,
+                                         keep_alive_interval = KeepAliveInterval, metrics_info = MetricsInfo,
                                          keep_alive_ref = TimerRef, id = ClientId}) ->
-    hello_metrics:client_internal_request(ClientId),
+    hello_metrics:update_client_request(ping, MetricsInfo, 0),
     {ok, NewTransportState} = TransportModule:send_request(?PING, ?INTERNAL_SIGNATURE, TransportState),
     ?LOG_DEBUG("~p : Sent keep alive request. Pinging server again in ~p ms.",
                [ClientId, KeepAliveInterval], gen_meta_fields(State), ?LOGID21),
     timer:cancel(TimerRef),
     {ok, NewTimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
     {noreply, State#client_state{transport_state = NewTransportState, keep_alive_ref = NewTimerRef,
-                                 waiting_for_pong = true, last_ping = os:timestamp()}};
+                                 waiting_for_pong = true, last_ping = hello_metrics:timestamp(milli_seconds)}};
 
 handle_info(Info, State = #client_state{transport_mod=TransportModule, transport_state=TransportState}) ->
     case TransportModule:handle_info(Info, TransportState) of
@@ -226,9 +225,8 @@ handle_info(Info, State = #client_state{transport_mod=TransportModule, transport
 
 %% @hidden
 terminate(Reason, #client_state{transport_mod = TransportModule, transport_state = TransportState, 
-                                id = ClientId, keep_alive_ref = TimerRef}) ->
-    hello_metrics:client(-1),
-    hello_metrics:unsubscribe_client(ClientId),
+                                keep_alive_ref = TimerRef, metrics_info = MetricsInfo}) ->
+    hello_metrics:delete_client(MetricsInfo),
     timer:cancel(TimerRef),
     TransportModule:terminate_transport(Reason, TransportState).
 
@@ -243,16 +241,17 @@ code_change(_FromVsn, _ToVsn, State) ->
 %% -- Helper functions
 init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts) ->
     case init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts, #client_state{}) of
-        {ok, _} = OK -> 
-            hello_metrics:subscribe_client(get_client_id(ClientOpts)),
-            hello_metrics:client(1), 
+        {ok, #client_state{metrics_info = MetricsInfo}} = OK ->
+            hello_metrics:create_client(MetricsInfo),
             OK;
         Other -> Other
     end.
 
 init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts, State0) ->
-    ClientId = get_client_id(ClientOpts),
     Url = ex_uri:encode(URIRec),
+    ClientId = get_client_id(ClientOpts),
+    {AtomIP, AtomPort} = hello_metrics:atomize_ex_uri(URIRec),
+    MetricsInfo = {hello_metrics:to_atom(ClientId), AtomIP, AtomPort},
     ?LOG_DEBUG("~p : initializing on ~p ...", [ClientId, Url],
                ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID02),
     case TransportModule:init_transport(URIRec, TransportOpts) of
@@ -270,6 +269,7 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts,
                                           protocol_opts = ProtocolOpts,
                                           protocol_state = ProtocolState,
                                           notification_sink = NotificationSink, 
+                                          metrics_info = MetricsInfo,
                                           waiting_for_pong = false},
                     evaluate_client_options(ClientOpts, State);
                 {error, Reason} ->
@@ -294,7 +294,8 @@ evaluate_client_options(ClientOpts, State0) ->
             {ok, State1};
         KeepAliveInterval > 0 ->
             {ok, TimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
-            State1 = State#client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, id = ClientId, last_pong = os:timestamp()},
+            State1 = State#client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef,
+                                        id = ClientId, last_pong = hello_metrics:timestamp(milli_seconds)},
             ?LOG_DEBUG("~p : initialized successfully with keep alive", [ClientId], gen_meta_fields(State1), ?LOGID06),
             {ok, State1}
     end.
@@ -310,6 +311,7 @@ incoming_message({error, Reason, NewTransportState}, State = #client_state{id = 
 incoming_message({ok, Signature, BinResponse, NewTransportState}, 
                  State = #client_state{async_request_map = AsyncMap,
                                        protocol_mod = ProtocolMod, 
+                                       metrics_info = MetricsInfo,
                                        protocol_opts = ProtocolOpts, 
                                        id = ClientId}) ->
     case hello_proto:decode(ProtocolMod, ProtocolOpts, Signature, BinResponse, response) of
@@ -318,9 +320,11 @@ incoming_message({ok, Signature, BinResponse, NewTransportState},
             notification(Response, State),
             {noreply, State#client_state{transport_state = NewTransportState}};
         {ok, Response = #response{}} ->
+            hello_metrics:update_client_request(pending, MetricsInfo, -1),
             ?LOG_DEBUG("~p : received response", [ClientId], gen_meta_fields(Response, State), ?LOGID09),
             request_reply(Response, AsyncMap, State);
         {ok, Responses = [{ok, #response{}} | _]} ->
+            hello_metrics:update_client_request(pending, MetricsInfo, -1),
             Responses1 = [R || {_, R} <- Responses],
             ?LOG_DEBUG("~p : received batch response", [ClientId], gen_meta_fields(Responses1, State), ?LOGID10),
             NotificationResponses = [R || {_, #response{id = null} = R} <- Responses],
@@ -328,6 +332,7 @@ incoming_message({ok, Signature, BinResponse, NewTransportState},
             Responses2 = Responses1 -- NotificationResponses,
             request_reply(Responses2, AsyncMap, State#client_state{transport_state = NewTransportState});
         {error, Reason} ->
+            hello_metrics:update_client_request(pending, MetricsInfo, -1),
             ?LOG_ERROR("~p : failed to decode response with reason ~p", [ClientId, Reason],
                        gen_meta_fields(BinResponse, State), ?LOGID11),
             {noreply, State#client_state{transport_state = NewTransportState}};
@@ -344,12 +349,14 @@ outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod
                                                       protocol_opts = ProtocolOpts,
                                                       transport_mod = TransportModule,
                                                       transport_state = TransportState,
+                                                      metrics_info = MetricsInfo,
                                                       async_request_map = AsyncMap, id = ClientId}) ->
     case hello_proto:encode(ProtocolMod, ProtocolOpts, Request) of
         {ok, BinRequest} ->
             Signature = hello_proto:signature(ProtocolMod, ProtocolOpts),
             case TransportModule:send_request(BinRequest, Signature, TransportState) of
                 {ok, NewTransportState} ->
+                    hello_metrics:update_client_request(pending, MetricsInfo, 1),
                     ?LOG_DEBUG("~p / ~p : sent request", [ClientId, hello_log:get_method(Request)],
                                gen_meta_fields(Request, State), ?LOGID14),
                     maybe_noreply(NewTransportState, Request, From, AsyncMap, State);
@@ -376,11 +383,11 @@ update_map(#request{id = undefined}, _From, AsyncMap) -> AsyncMap;
 update_map(#request{id = RequestId} = Request, From, AsyncMap) -> gb_trees:enter(RequestId, {From, Request}, AsyncMap).
 
 handle_internal(?PONG, State = #client_state{keep_alive_interval = KeepAliveInterval, keep_alive_ref = TimerRef, 
-                                             last_ping = LastPing, id = ClientId}) ->
+                                             last_ping = LastPing, id = ClientId, metrics_info = MetricsInfo}) ->
     ?LOG_DEBUG("~p : Received keep alive response. Pinging server again in ~p ms.",
                [ClientId, KeepAliveInterval], gen_meta_fields(?PONG, State), ?LOGID18),
-    LastPong = os:timestamp(),
-    hello_metrics:client_ping_pong_latency(ClientId, timer:now_diff(LastPong, LastPing) / 1000),
+    LastPong = hello_metrics:timestamp(milli_seconds),
+    hello_metrics:update_client_request(ping, MetricsInfo, LastPong - LastPing),
     timer:cancel(TimerRef),
     {ok, NewTimerRef} = timer:send_after(KeepAliveInterval, self(), ?PING),
     {ok, State#client_state{keep_alive_ref = NewTimerRef, waiting_for_pong = false, last_pong = LastPong}};
@@ -469,4 +476,4 @@ gen_meta_fields(#client_state{transport_mod = TransportModule, transport_state =
     lists:append([{hello_client_id, ClientId}], TransportModule:gen_meta_fields(TransportState)).
 
 last_pong(undefined, Interval) -> Interval;
-last_pong(Start, _) -> timer:now_diff(os:timestamp(), Start) / 1000.
+last_pong(Start, _) -> hello_metrics:timestamp(milli_seconds) - Start.

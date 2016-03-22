@@ -81,7 +81,7 @@ handle_incoming_message(Context1, ProtocolMod, ProtocolOpts, Router, ExUriURL, S
 
 proceed_incoming_message(Requests, Context, ProtocolMod, ProtocolOpts, Router, ExUriURL) when is_list(Requests) ->
     [proceed_incoming_message(Request, Context, ProtocolMod, ProtocolOpts, Router, ExUriURL) || {_, Request} <- Requests];
-proceed_incoming_message(Request = #request{type = Type, proto_data = Info}, Context, ProtocolMod, ProtocolOpts, Router, ExUriURL) ->
+proceed_incoming_message(Request = #request{type = Type, proto_data = Info}, Context, ProtocolMod, _ProtocolOpts, Router, ExUriURL) ->
     case Router:route(Context, Request, ExUriURL) of
         {ok, ServiceName, Identifier} ->
             hello_service:call(ServiceName, Identifier, 
