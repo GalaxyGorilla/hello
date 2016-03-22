@@ -25,32 +25,35 @@
 -include("metrics.hrl").
 -include_lib("ex_uri/include/ex_uri.hrl").
 
--export([create_server/1,
+-export([create_listener/1,
+         create_handler/1,
          create_client/1,
-         delete_server/1,
+         delete_listener/1,
+         delete_handler/1,
          delete_client/1]).
--export([update_server_request/3, update_server_time/2, update_server_packet/3,
+-export([update_listener_request/3, update_listener_time/2, update_listener_packet/3,
+         update_handler_request/3, update_handler_time/2,
          update_client_request/3, update_client_time/2]).
--export([to_atom/1, atomize_ex_uri/1, timestamp/1, update_uptime/1]).
+-export([to_atom/1, atomize_ex_uri/1, timestamp/1, update_listener_uptime/1]).
 
--type server_name() :: atom().
--type client_name() :: atom().
--type atom_ip() :: atom().
--type atom_port() :: atom().
--type client_metrics_info() :: {client_name(), server_name(), atom_ip(), atom_port()}.
--type server_metrics_info() :: {server_name(), atom_ip(), atom_port()}.
--type request_type() :: atom().
--type packet_size() :: integer().
 
 %% -------------------------------------------------------
 %% API for metric creation
 %% -------------------------------------------------------
--spec create_server(server_metrics_info()) -> ok.
-create_server(MetricsInfo) ->
+-spec create_listener(listener_metrics_info()) -> ok.
+create_listener(MetricsInfo) ->
     create(server, MetricsInfo).
 
--spec delete_server(server_metrics_info()) -> ok.
-delete_server(MetricsInfo) ->
+-spec delete_listener(listener_metrics_info()) -> ok.
+delete_listener(MetricsInfo) ->
+    delete(server, MetricsInfo).
+
+-spec create_handler(handler_metrics_info()) -> ok.
+create_handler(MetricsInfo) ->
+    create(server, MetricsInfo).
+
+-spec delete_handler(handler_metrics_info()) -> ok.
+delete_handler(MetricsInfo) ->
     delete(server, MetricsInfo).
 
 -spec create_client(client_metrics_info()) -> ok.
@@ -64,20 +67,33 @@ delete_client(MetricsInfo) ->
 %% -------------------------------------------------------
 %% API for metric updates.
 %% -------------------------------------------------------
--spec update_server_request(request_type(), server_metrics_info(), integer()) -> any().
-update_server_request(pending, Address, Pending) ->
-    update_request(server, pending, Address, Pending);
-update_server_request(Type, Address, Ms) ->
-    [update_request(server, ReqType, Address, Ms) || ReqType <- [Type, total]],
-    update_server_time(last_request, Address).
+-spec update_listener_request(request_type(), listener_metrics_info(), integer()) -> any().
+update_listener_request(pending, MetricsInfo, Pending) ->
+    update_request(listener, pending, MetricsInfo, Pending);
+update_listener_request(Type, MetricsInfo, Ms) ->
+    [update_request(listener, ReqType, MetricsInfo, Ms) || ReqType <- [Type, total]],
+    update_listener_time(last_request, MetricsInfo).
 
--spec update_server_time(last_reset | last_request, server_metrics_info()) -> any().
-update_server_time(Type, Address) ->
-    update_time(server, Type, Address).
+-spec update_listener_time(last_reset | last_request, listener_metrics_info()) -> any().
+update_listener_time(Type, MetricsInfo) ->
+    update_time(listener, Type, MetricsInfo).
 
--spec update_server_packet(in | out, server_metrics_info(), packet_size()) -> any().
-update_server_packet(Type, Address, Size) ->
-    update_packet(server, Type, Address, Size).
+-spec update_listener_packet(in | out, listener_metrics_info(), packet_size()) -> any().
+update_listener_packet(Type, MetricsInfo, Size) ->
+    update_packet(listener, Type, MetricsInfo, Size).
+
+-spec update_handler_request(request_type(), handler_metrics_info(), integer()) -> any().
+update_handler_request(pending, MetricsInfo = {_, LName, LIP, LPort}, Pending) ->
+    update_listener_request(pending, {LName, LIP, LPort}, Pending),
+    update_request(handler, pending, MetricsInfo, Pending);
+update_handler_request(Type, MetricsInfo = {_, LName, LIP, LPort}, Ms) ->
+    update_listener_request(Type, {LName, LIP, LPort}, Ms),
+    [update_request(handler, ReqType, MetricsInfo, Ms) || ReqType <- [Type, total]],
+    update_handler_time(last_request, MetricsInfo).
+
+-spec update_handler_time(last_reset | last_request, handler_metrics_info()) -> any().
+update_handler_time(Type, MetricsInfo) ->
+    update_time(handler, Type, MetricsInfo).
 
 -spec update_client_request(request_type(), client_metrics_info(), integer()) -> any().
 update_client_request(pending, MetricsInfo, Pending) ->
@@ -130,7 +146,8 @@ proceed_metrics_action(Action, Service, Args, Metrics) ->
             lists:foreach(
                 fun({UnitType, {ExoType, ExoTypeOpts}}) ->
                     PartId = case Service of
-                                      server    -> server_layout(Args);
+                                      listener  -> listener_layout(Args);
+                                      handler   -> handler_layout(Args);
                                       client    -> client_layout(Args)
                                   end,
                     %% this is the final exometer id:
@@ -152,24 +169,24 @@ proceed_metrics_action(Action, Service, Args, Metrics) ->
                 end, Units)
         end, Metrics).
 
-update_request(server, Type, Args, Ms) ->
-    Args1 = server_layout(Args),
+update_request(listener, Type, Args, Ms) ->
+    Args1 = listener_layout(Args),
     update_exo_request(Type, Args1, Ms);
 update_request(client, Type, Args, Ms) ->
     Args1 = client_layout(Args),
     update_exo_request(Type, Args1, Ms).
 
-update_time(server, Type, Args) ->
+update_time(listener, Type, Args) ->
     Sec = timestamp(milli_seconds),
-    Args1 = server_layout(Args),
+    Args1 = listener_layout(Args),
     update_exo_time(Type, Args1, Sec);
 update_time(client, Type, Args) ->
     Sec = timestamp(milli_seconds),
     Args1 = client_layout(Args),
     update_exo_time(Type, Args1, Sec).
 
-update_packet(server, Type, Args, Size) ->
-    Args1 = server_layout(Args),
+update_packet(listener, Type, Args, Size) ->
+    Args1 = listener_layout(Args),
     update_exo_packet(Type, Args1, Size).
 
 update_exo_request(pending, Args, Value) ->
@@ -189,10 +206,12 @@ update_exo_packet(Type, Args, Size) ->
     exometer:update(PartId ++ [counter], 1),
     exometer:update(PartId ++ [size], Size).
 
-server_layout({ServerName, ServerIP, ServerPort}) ->
-    [server, ServerName, ServerIP, ServerPort, total, undefined, undefined].
-client_layout({ClientName, ClientIP, ServerName, ServerIP, ServerPort}) ->
-    [client, ClientName, ClientIP, undefined, ServerName, ServerIP, ServerPort].
+listener_layout({ListenerName, ListenerIP, ListenerPort}) ->
+    [server, total, ListenerName, ListenerIP, ListenerPort, total, undefined, undefined].
+handler_layout({HandlerName, ListenerName, ListenerIP, ListenerPort}) ->
+    [server, HandlerName, ListenerName, ListenerIP, ListenerPort, total, undefined, undefined].
+client_layout({ClientName, ServerIP, ServerPort}) ->
+    [client, undefined, ClientName, undefined, undefined, undefined, ServerIP, ServerPort].
 
 to_atom(Value) when is_atom(Value) -> Value;
 to_atom(Value) when is_binary(Value) -> binary_to_atom(Value, latin1);
@@ -224,9 +243,9 @@ port_to_atom(undefined) -> undefined;
 port_to_atom(Port) when is_atom(Port) -> Port;
 port_to_atom(Port) -> list_to_atom(integer_to_list(Port)).
 
-update_uptime(ServerAddress) ->
-    Args = server_layout(ServerAddress),
+update_listener_uptime(MetricsInfo) ->
+    Args = listener_layout(MetricsInfo),
     LastResetId = lists:append([?DEFAULT_ENTRIES, [time, last_reset], Args, [gauge]]),
-    {ok, [{value, ServerStartTime}, _]} = exometer:get_value(LastResetId),
+    {ok, [{value, ListenerStartTime}, _]} = exometer:get_value(LastResetId),
     CurrentTime = timestamp(milli_seconds),
-    [{value, round(CurrentTime - ServerStartTime)}].
+    [{value, round(CurrentTime - ListenerStartTime)}].

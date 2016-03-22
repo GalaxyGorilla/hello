@@ -9,6 +9,19 @@
 %%
 %% In a similar way this holds for other metrics.
 
+
+-type listener_name() :: atom().
+-type handler_name() :: atom().
+-type client_name() :: atom().
+-type atom_ip() :: atom().
+-type atom_port() :: atom().
+-type client_metrics_info() :: {client_name(), atom_ip(), atom_port()}.
+-type handler_metrics_info() :: {handler_name(), listener_name(), atom_ip(), atom_port()}.
+-type listener_metrics_info() :: {listener_name(), atom_ip(), atom_port()}.
+-type request_type() :: atom().
+-type packet_size() :: integer().
+
+
 %% this will be prepended to all eradius metrics
 -define(DEFAULT_ENTRIES, [hello, api]).
 
