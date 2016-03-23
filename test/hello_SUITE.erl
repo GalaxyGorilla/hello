@@ -25,13 +25,13 @@ unbind_all(_Config) ->
 
 start_supervised(_Config) ->
     [ start_client(Transport) || Transport <- ?TRANSPORTS ],
-    [ hello_client_sup:stop_client(Url ++ "/test") || {Url, _} <- ?TRANSPORTS ],
+    [ hello_client_sup:stop_client(Url) || {Url, _} <- ?TRANSPORTS ],
     [] = hello_client_sup:clients(),
     ok.
 
 start_named_supervised(_Config) ->
     [ start_named_client(Transport) || Transport <- ?TRANSPORTS ],
-    [ hello_client_sup:stop_client(Url ++ "/test") || {Url, _} <- ?TRANSPORTS ],
+    [ hello_client_sup:stop_client(Url) || {Url, _} <- ?TRANSPORTS ],
     [] = hello_client_sup:clients(),
     ok.
 
@@ -42,10 +42,10 @@ keep_alive(_Config) ->
     true = meck:validate(hello_client),
     ok = meck:expect(hello_client, handle_internal, fun(Message, State) -> ct:log("got pong"), meck:passthrough([Message, State]) end),
     {ZMQUrl, ZMQTransportOpts} = ?ZMQ_TCP,
-    {ok, ZMQClient} = hello_client:start_supervised(ZMQUrl ++ "/test", ZMQTransportOpts, 
+    {ok, ZMQClient} = hello_client:start_supervised(ZMQUrl, ZMQTransportOpts, 
                                                     [{protocol, hello_proto_jsonrpc}], [{keep_alive_interval, 200}] ),
     {HTTPUrl, HTTPTransportOpts} = ?HTTP,
-    {ok, HTTPClient} = hello_client:start_supervised(HTTPUrl ++ "/test", HTTPTransportOpts, 
+    {ok, HTTPClient} = hello_client:start_supervised(HTTPUrl, HTTPTransportOpts, 
                                                      [{protocol, hello_proto_jsonrpc}], [{keep_alive_interval, 200}] ),
     timer:sleep(500), %% lets wait for some pongs, should be around 3-4; look them up in the ct log
     {_, [Arg], _} = ?REQ11,
@@ -58,8 +58,8 @@ keep_alive(_Config) ->
     timer:sleep(500), 
     {ok, Arg} = hello_client:call(ZMQClient, ?REQ11),
     {ok, Arg} = hello_client:call(HTTPClient, ?REQ11),
-    hello_client_sup:stop_client(ZMQUrl ++ "/test"),
-    hello_client_sup:stop_client(HTTPUrl ++ "/test"),
+    hello_client_sup:stop_client(ZMQUrl),
+    hello_client_sup:stop_client(HTTPUrl),
     meck:unload(hello_proto),
     meck:unload(hello_client),
     ok.
@@ -95,12 +95,12 @@ bind_url({Url, _TransportOpts}, Protocol) ->
 start_client(Transport) ->
     {Url, TransportOpts} = Transport,
     ProtocolOpts = [{protocol, hello_proto_jsonrpc}],
-    {ok, Pid} = hello_client:start_supervised(Url ++ "/test", TransportOpts, ProtocolOpts, []),
+    {ok, Pid} = hello_client:start_supervised(Url, TransportOpts, ProtocolOpts, []),
     Pid.
 
 start_named_client(Transport) ->
     Name = proplists:get_value(Transport, ?CLIENT_NAMES),
     {Url, TransportOpts} = Transport,
     ProtocolOpts = [{protocol, hello_proto_jsonrpc}],
-    {ok, _Pid} = hello_client:start_supervised(Name, Url ++ "/test", TransportOpts, ProtocolOpts, []),
+    {ok, _Pid} = hello_client:start_supervised(Name, Url, TransportOpts, ProtocolOpts, []),
     Name.
