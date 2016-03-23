@@ -252,6 +252,7 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts,
     Url = ex_uri:encode(URIRec),
     ClientId = get_client_id(ClientOpts),
     {AtomIP, AtomPort} = hello_metrics:atomize_ex_uri(URIRec),
+    io:format(standard_error, "~p~n", [ClientId]),
     MetricsInfo = {hello_metrics:to_atom(ClientId), AtomIP, AtomPort},
     ?LOG_DEBUG("~p : initializing on ~p ...", [ClientId, Url],
                ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID02),
@@ -312,7 +313,6 @@ incoming_message({error, Reason, NewTransportState}, State = #client_state{id = 
 incoming_message({ok, Signature, BinResponse, NewTransportState}, 
                  State = #client_state{async_request_map = AsyncMap,
                                        protocol_mod = ProtocolMod, 
-                                       metrics_info = MetricsInfo,
                                        protocol_opts = ProtocolOpts, 
                                        id = ClientId}) ->
     case hello_proto:decode(ProtocolMod, ProtocolOpts, Signature, BinResponse, response) of
@@ -321,11 +321,9 @@ incoming_message({ok, Signature, BinResponse, NewTransportState},
             notification(Response, State),
             {noreply, State#client_state{transport_state = NewTransportState}};
         {ok, Response = #response{}} ->
-            hello_metrics:update_client_request(pending, MetricsInfo, -1),
             ?LOG_DEBUG("~p : received response", [ClientId], gen_meta_fields(Response, State), ?LOGID09),
             request_reply(Response, AsyncMap, State);
         {ok, Responses = [{ok, #response{}} | _]} ->
-            hello_metrics:update_client_request(pending, MetricsInfo, -1),
             Responses1 = [R || {_, R} <- Responses],
             ?LOG_DEBUG("~p : received batch response", [ClientId], gen_meta_fields(Responses1, State), ?LOGID10),
             NotificationResponses = [R || {_, #response{id = null} = R} <- Responses],
@@ -333,7 +331,6 @@ incoming_message({ok, Signature, BinResponse, NewTransportState},
             Responses2 = Responses1 -- NotificationResponses,
             request_reply(Responses2, AsyncMap, State#client_state{transport_state = NewTransportState});
         {error, Reason} ->
-            hello_metrics:update_client_request(pending, MetricsInfo, -1),
             ?LOG_ERROR("~p : failed to decode response with reason ~p", [ClientId, Reason],
                        gen_meta_fields(BinResponse, State), ?LOGID11),
             {noreply, State#client_state{transport_state = NewTransportState}};
@@ -350,14 +347,12 @@ outgoing_message(Request, From, State = #client_state{protocol_mod = ProtocolMod
                                                       protocol_opts = ProtocolOpts,
                                                       transport_mod = TransportModule,
                                                       transport_state = TransportState,
-                                                      metrics_info = MetricsInfo,
                                                       async_request_map = AsyncMap, id = ClientId}) ->
     case hello_proto:encode(ProtocolMod, ProtocolOpts, Request) of
         {ok, BinRequest} ->
             Signature = hello_proto:signature(ProtocolMod, ProtocolOpts),
             case TransportModule:send_request(BinRequest, Signature, TransportState) of
                 {ok, NewTransportState} ->
-                    hello_metrics:update_client_request(pending, MetricsInfo, 1),
                     ?LOG_DEBUG("~p / ~p : sent request", [ClientId, hello_log:get_method(Request)],
                                gen_meta_fields(Request, State), ?LOGID14),
                     maybe_noreply(NewTransportState, Request, From, AsyncMap, State);

@@ -22,7 +22,7 @@
 
 -module (hello_metrics).
 
--include("metrics.hrl").
+-include("hello_metrics.hrl").
 -include_lib("ex_uri/include/ex_uri.hrl").
 
 -export([create_listener/1,
@@ -68,8 +68,6 @@ delete_client(MetricsInfo) ->
 %% API for metric updates.
 %% -------------------------------------------------------
 -spec update_listener_request(request_type(), listener_metrics_info(), integer()) -> any().
-update_listener_request(pending, MetricsInfo, Pending) ->
-    update_request(listener, pending, MetricsInfo, Pending);
 update_listener_request(Type, MetricsInfo, Ms) ->
     [update_request(listener, ReqType, MetricsInfo, Ms) || ReqType <- [Type, total]],
     update_listener_time(last_request, MetricsInfo).
@@ -83,9 +81,6 @@ update_listener_packet(Type, MetricsInfo, Size) ->
     update_packet(listener, Type, MetricsInfo, Size).
 
 -spec update_handler_request(request_type(), handler_metrics_info(), integer()) -> any().
-update_handler_request(pending, MetricsInfo = {_, LName, LIP, LPort}, Pending) ->
-    update_listener_request(pending, {LName, LIP, LPort}, Pending),
-    update_request(handler, pending, MetricsInfo, Pending);
 update_handler_request(Type, MetricsInfo = {_, LName, LIP, LPort}, Ms) ->
     update_listener_request(Type, {LName, LIP, LPort}, Ms),
     [update_request(handler, ReqType, MetricsInfo, Ms) || ReqType <- [Type, total]],
@@ -96,8 +91,6 @@ update_handler_time(Type, MetricsInfo) ->
     update_time(handler, Type, MetricsInfo).
 
 -spec update_client_request(request_type(), client_metrics_info(), integer()) -> any().
-update_client_request(pending, MetricsInfo, Pending) ->
-    update_request(client, pending, MetricsInfo, Pending);
 update_client_request(Type, MetricsInfo, Ms) ->
     [update_request(client, ReqType, MetricsInfo, Ms) || ReqType <- [Type, total]],
     update_client_time(last_request, MetricsInfo).
@@ -189,9 +182,6 @@ update_packet(listener, Type, Args, Size) ->
     Args1 = listener_layout(Args),
     update_exo_packet(Type, Args1, Size).
 
-update_exo_request(pending, Args, Value) ->
-    PartId = lists:append([?DEFAULT_ENTRIES, [request, pending], Args]),
-    exometer:update(PartId ++ [gauge], Value);
 update_exo_request(Type, Args, Ms) ->
     PartId = lists:append([?DEFAULT_ENTRIES, [request, Type], Args]),
     exometer:update(PartId ++ [counter], 1),

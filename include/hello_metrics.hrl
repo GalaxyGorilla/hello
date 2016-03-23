@@ -26,6 +26,7 @@
 -define(DEFAULT_ENTRIES, [hello, api]).
 
 -define(METRICS, [{server,  ?SERVER_METRICS},
+                  {handler, ?HANDLER_METRICS},
                   {client,  ?CLIENT_METRICS}]).
 
 %% exometer basic configuration used for metrics
@@ -57,23 +58,18 @@
      {request, error, [
        {ticks, ?HISTOGRAM_1000},
        {counter, ?COUNTER}]},
-     {request, internal, [
-       {ticks, ?HISTOGRAM_1000},
-       {counter, ?COUNTER}]},
-     {request, ping, [
-       {ticks, ?HISTOGRAM_1000},
-       {counter, ?COUNTER}]},
-     {request, timeout, [
-       {ticks, ?HISTOGRAM_1000},
-       {counter, ?COUNTER}]},
 
      {time, last_request, [
-       {gauge, ?GAUGE}]},
-     {request, pending, [
-       {gauge, ?COUNTER}]}
+       {gauge, ?GAUGE}]}
      ]).
 
 -define(SERVER_METRICS, [
+     {request, ping, [
+       {ticks, ?HISTOGRAM_1000},
+       {counter, ?COUNTER}]},
+     {request, internal, [
+       {ticks, ?HISTOGRAM_1000},
+       {counter, ?COUNTER}]},
      {time, last_reset, [
        {gauge, ?GAUGE}]},
      {time, up, [
@@ -86,5 +82,13 @@
        {size, ?HISTOGRAM_1000}]}
      ] ++ ?BASIC_REQUEST_METRICS).
 
--define(CLIENT_METRICS, ?BASIC_REQUEST_METRICS).
+-define(CLIENT_METRICS, [
+     {request, ping, [
+       {ticks, ?HISTOGRAM_1000},
+       {counter, ?COUNTER}]},
+     {request, timeout, [
+       {ticks, ?HISTOGRAM_1000},
+       {counter, ?COUNTER}]}
+     ] ++ ?BASIC_REQUEST_METRICS).
 
+-define(HANDLER_METRICS, ?BASIC_REQUEST_METRICS).
