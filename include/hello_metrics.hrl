@@ -64,9 +64,6 @@
      ]).
 
 -define(LISTENER_METRICS, [
-     {request, ping, [
-       {ticks, ?HISTOGRAM_1000},
-       {counter, ?COUNTER}]},
      {request, internal, [
        {ticks, ?HISTOGRAM_1000},
        {counter, ?COUNTER}]},

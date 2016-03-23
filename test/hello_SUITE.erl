@@ -48,7 +48,6 @@ keep_alive(_Config) ->
     {ok, HTTPClient} = hello_client:start_supervised(HTTPUrl ++ "/test", HTTPTransportOpts, 
                                                      [{protocol, hello_proto_jsonrpc}], [{keep_alive_interval, 200}] ),
     timer:sleep(500), %% lets wait for some pongs, should be around 3-4; look them up in the ct log
-    ct:pal("~p", [exometer:get_values([hello, api, request, total, listener])]),
     {_, [Arg], _} = ?REQ11,
     {ok, Arg} = hello_client:call(ZMQClient, ?REQ11),
     {ok, Arg} = hello_client:call(HTTPClient, ?REQ11),
@@ -59,6 +58,8 @@ keep_alive(_Config) ->
     timer:sleep(500), 
     {ok, Arg} = hello_client:call(ZMQClient, ?REQ11),
     {ok, Arg} = hello_client:call(HTTPClient, ?REQ11),
+    hello_client_sup:stop_client(ZMQUrl ++ "/test"),
+    hello_client_sup:stop_client(HTTPUrl ++ "/test"),
     meck:unload(hello_proto),
     meck:unload(hello_client),
     ok.
