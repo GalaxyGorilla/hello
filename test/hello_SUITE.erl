@@ -41,8 +41,6 @@ keep_alive(_Config) ->
     meck:new(hello_client, [passthrough]),
     true = meck:validate(hello_client),
     ok = meck:expect(hello_client, handle_internal, fun(Message, State) -> ct:log("got pong"), meck:passthrough([Message, State]) end),
-    %[exometer:reset([hello, server, Name, packets_in, per_sec]) || {Name, _} <- [?HTTP, ?ZMQ_TCP]],
-    [not_found = internal_req_counter(Name) || {Name, _} <- [?HTTP, ?ZMQ_TCP]],
     {ZMQUrl, ZMQTransportOpts} = ?ZMQ_TCP,
     {ok, ZMQClient} = hello_client:start_supervised(ZMQUrl ++ "/test", ZMQTransportOpts, 
                                                     [{protocol, hello_proto_jsonrpc}], [{keep_alive_interval, 200}] ),
@@ -50,11 +48,7 @@ keep_alive(_Config) ->
     {ok, HTTPClient} = hello_client:start_supervised(HTTPUrl ++ "/test", HTTPTransportOpts, 
                                                      [{protocol, hello_proto_jsonrpc}], [{keep_alive_interval, 200}] ),
     timer:sleep(500), %% lets wait for some pongs, should be around 3-4; look them up in the ct log
-    %ct:pal("~p", [exometer:get_values([hello, server])]),
-    [begin 
-         true = (packets_in_counter(Name) > 0),
-         found = internal_req_counter(Name)
-     end || {Name, _} <- [?HTTP, ?ZMQ_TCP]],
+    ct:pal("~p", [exometer:get_values([hello, api, request, total, listener])]),
     {_, [Arg], _} = ?REQ11,
     {ok, Arg} = hello_client:call(ZMQClient, ?REQ11),
     {ok, Arg} = hello_client:call(HTTPClient, ?REQ11),
@@ -67,7 +61,6 @@ keep_alive(_Config) ->
     {ok, Arg} = hello_client:call(HTTPClient, ?REQ11),
     meck:unload(hello_proto),
     meck:unload(hello_client),
-
     ok.
 
 % ---------------------------------------------------------------------
@@ -75,10 +68,10 @@ keep_alive(_Config) ->
 all() ->
     [bind_http,
      bind_zmq_tcp,
-     unbind_all
-    % start_supervised,
-    % start_named_supervised,
-    % keep_alive
+     unbind_all,
+     start_supervised,
+     start_named_supervised,
+     keep_alive
      ].
 
 init_per_suite(Config) ->
@@ -91,18 +84,6 @@ end_per_suite(_Config) ->
 
 % ---------------------------------------------------------------------
 % -- helpers
-packets_in_counter(_Name0) -> ok.
-    %Name = list_to_atom(Name0),
-    %{ok, PacketIn} = exometer:get_value([hello, server, Name, packets_in, per_sec]),
-    %proplists:get_value(one, PacketIn).
-
-internal_req_counter(_Name0) -> ok.
-    %Name = list_to_atom(Name0),
-    %case nxometer:get_value([hello, server, Name, requests, internal, per_sec]) of
-    %    {ok, InternalReq} -> found;
-    %    {error, not_found} -> not_found
-    %end.
-
 bind_url({Url, _TransportOpts}, Protocol) ->
     spawn(fun() ->
         hello:start_listener(Url, Url, [], Protocol, [], hello_router),

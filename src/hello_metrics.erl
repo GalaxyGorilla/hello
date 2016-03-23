@@ -165,6 +165,9 @@ proceed_metrics_action(Action, Service, Args, Metrics) ->
 update_request(listener, Type, Args, Ms) ->
     Args1 = listener_layout(Args),
     update_exo_request(Type, Args1, Ms);
+update_request(handler, Type, Args, Ms) ->
+    Args1 = handler_layout(Args),
+    update_exo_request(Type, Args1, Ms);
 update_request(client, Type, Args, Ms) ->
     Args1 = client_layout(Args),
     update_exo_request(Type, Args1, Ms).
@@ -172,6 +175,10 @@ update_request(client, Type, Args, Ms) ->
 update_time(listener, Type, Args) ->
     Sec = timestamp(milli_seconds),
     Args1 = listener_layout(Args),
+    update_exo_time(Type, Args1, Sec);
+update_time(handler, Type, Args) ->
+    Sec = timestamp(milli_seconds),
+    Args1 = handler_layout(Args),
     update_exo_time(Type, Args1, Sec);
 update_time(client, Type, Args) ->
     Sec = timestamp(milli_seconds),
@@ -205,7 +212,8 @@ client_layout({ClientName, ListenerIP, ListenerPort}) ->
 
 to_atom(Value) when is_atom(Value) -> Value;
 to_atom(Value) when is_binary(Value) -> binary_to_atom(Value, latin1);
-to_atom(Value) when is_list(Value) -> list_to_atom(Value).
+to_atom(Value) when is_list(Value) -> list_to_atom(Value);
+to_atom(_Value) -> undefined.
 
 protocol("zmq-tcp6") -> inet6;
 protocol(_) -> inet.

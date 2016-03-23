@@ -164,7 +164,7 @@ handle_call({call, Call}, From, State = #client_state{protocol_mod = ProtocolMod
     case Value1 of
         {ok, Request, NewProtocolState} ->
             State1 = State#client_state{protocol_state = NewProtocolState},
-            {Time2, Value2} = timer:tc(outgoing_message, [Request, From, State1]),
+            {Time2, Value2} = timer:tc(?MODULE, outgoing_message, [Request, From, State1]),
             case Value2 of
                 {ok, State2} ->
                     hello_metrics:update_client_request(success, MetricsInfo, (Time1 + Time2) / 1000),
@@ -252,7 +252,6 @@ init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts,
     Url = ex_uri:encode(URIRec),
     ClientId = get_client_id(ClientOpts),
     {AtomIP, AtomPort} = hello_metrics:atomize_ex_uri(URIRec),
-    io:format(standard_error, "~p~n", [ClientId]),
     MetricsInfo = {hello_metrics:to_atom(ClientId), AtomIP, AtomPort},
     ?LOG_DEBUG("~p : initializing on ~p ...", [ClientId, Url],
                ?HELLO_CLIENT_DEFAULT_META(ClientId, Url), ?LOGID02),
