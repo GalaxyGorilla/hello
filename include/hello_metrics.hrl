@@ -25,9 +25,9 @@
 %% this will be prepended to all eradius metrics
 -define(DEFAULT_ENTRIES, [hello, api]).
 
--define(METRICS, [{server,  ?SERVER_METRICS},
-                  {handler, ?HANDLER_METRICS},
-                  {client,  ?CLIENT_METRICS}]).
+-define(METRICS, [{listener, ?LISTENER_METRICS},
+                  {handler,  ?HANDLER_METRICS},
+                  {client,   ?CLIENT_METRICS}]).
 
 %% exometer basic configuration used for metrics
 -define(COUNTER,        {counter,   %% exometer type
@@ -63,7 +63,7 @@
        {gauge, ?GAUGE}]}
      ]).
 
--define(SERVER_METRICS, [
+-define(LISTENER_METRICS, [
      {request, ping, [
        {ticks, ?HISTOGRAM_1000},
        {counter, ?COUNTER}]},

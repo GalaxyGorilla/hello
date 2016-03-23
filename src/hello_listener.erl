@@ -50,7 +50,7 @@ start(Id, ExUriURL, TransportOpts, Protocol, ProtocolOpts, RouterMod) ->
                                              metrics_info = MetricsInfo,
                                              router = RouterMod},
                     hello_metrics:create_listener(MetricsInfo),
-                    hello_metrics:update_listener_time(last_reset, MetricsInfo, hello_metrics:timestamp()),
+                    hello_metrics:update_listener_time(last_reset, MetricsInfo),
                     hello_registry:register_link({listener, ExUriURL}, self(), ListenerInfo),
                     {ok, ListenerRef};
                 {error, Reason} ->

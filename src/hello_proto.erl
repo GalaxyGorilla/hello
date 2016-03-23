@@ -75,7 +75,6 @@ handle_incoming_message(Context1, ProtocolMod, ProtocolOpts, Router, ExUriURL, S
         {error, Response} ->
             may_be_encode(ProtocolMod, ProtocolOpts, Response);
         {internal, Message} ->
-            hello_metrics:internal_request(Context#context.listener_id),
             ?MODULE:handle_internal(Context, Message) % for test
     end.
 

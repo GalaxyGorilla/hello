@@ -42,19 +42,19 @@
 %% -------------------------------------------------------
 -spec create_listener(listener_metrics_info()) -> ok.
 create_listener(MetricsInfo) ->
-    create(server, MetricsInfo).
+    create(listener, MetricsInfo).
 
 -spec delete_listener(listener_metrics_info()) -> ok.
 delete_listener(MetricsInfo) ->
-    delete(server, MetricsInfo).
+    delete(listener, MetricsInfo).
 
 -spec create_handler(handler_metrics_info()) -> ok.
 create_handler(MetricsInfo) ->
-    create(server, MetricsInfo).
+    create(listener, MetricsInfo).
 
 -spec delete_handler(handler_metrics_info()) -> ok.
 delete_handler(MetricsInfo) ->
-    delete(server, MetricsInfo).
+    delete(listener, MetricsInfo).
 
 -spec create_client(client_metrics_info()) -> ok.
 create_client(MetricsInfo) ->
@@ -127,6 +127,7 @@ metrics_action(Action, Service, Args) ->
     EnabledServices = proplists:get_value(enabled, MetricsOpts, []),
     case lists:member(Service, EnabledServices) of
         true ->
+    io:format(standard_error, "~p~n~p~n~p~n~p~n", [Action, Service, Args, Metrics]),
             proceed_metrics_action(Action, Service, Args, Metrics);
         false ->
             ok
@@ -197,11 +198,11 @@ update_exo_packet(Type, Args, Size) ->
     exometer:update(PartId ++ [size], Size).
 
 listener_layout({ListenerName, ListenerIP, ListenerPort}) ->
-    [server, total, ListenerName, ListenerIP, ListenerPort, total, undefined, undefined].
+    [listener, total, ListenerName, ListenerIP, ListenerPort, total, undefined, undefined].
 handler_layout({HandlerName, ListenerName, ListenerIP, ListenerPort}) ->
-    [server, HandlerName, ListenerName, ListenerIP, ListenerPort, total, undefined, undefined].
-client_layout({ClientName, ServerIP, ServerPort}) ->
-    [client, undefined, ClientName, undefined, undefined, undefined, ServerIP, ServerPort].
+    [handler, HandlerName, ListenerName, ListenerIP, ListenerPort, total, undefined, undefined].
+client_layout({ClientName, ListenerIP, ListenerPort}) ->
+    [client, undefined, ClientName, undefined, undefined, undefined, ListenerIP, ListenerPort].
 
 to_atom(Value) when is_atom(Value) -> Value;
 to_atom(Value) when is_binary(Value) -> binary_to_atom(Value, latin1);

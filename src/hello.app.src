@@ -7,7 +7,7 @@
    {mod, {hello, []}},
    {env, [
        {dnssd, false},
-       {metrics, {enabled, [client, server, handler]}},
+       {metrics, [{enabled, [client, listener, handler]}]},
        {default_protocol, hello_proto_jsonrpc},
        {transports, []},
        {server_timeout, 10000},
