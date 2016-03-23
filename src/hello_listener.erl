@@ -3,7 +3,7 @@
 
 -include_lib("ex_uri/include/ex_uri.hrl").
 -include("hello.hrl").
--include("metrics.hrl").
+-include("hello_metrics.hrl").
 
 
 %% Behaviour callbacks

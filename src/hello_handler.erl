@@ -32,7 +32,7 @@
 
 %% @doc RPC handler behaviour.
 -module(hello_handler).
--export([get_handler/4, process/2,
+-export([get_handler/5, process/2,
          set_idle_timeout/1,
          set_idle_timeout/2,
          notify/2,
@@ -44,6 +44,7 @@
 
 -include("hello.hrl").
 -include("hello_log.hrl").
+-include("hello_metrics.hrl").
 -include_lib("ex_uri/include/ex_uri.hrl").
 
 %% ----------------------------------------------------------------------------------------------------
@@ -56,6 +57,7 @@
     protocol                :: module(),
     async_reply_map         :: gb_trees:tree(),
     timer = #timer{}        :: #timer{},
+    metrics_info            :: handler_metrics_info(),
     url                     :: #ex_uri{}
 }).
 
@@ -80,20 +82,20 @@
 -callback terminate(Context :: context(), Reason :: term(), State :: term()) -> ok.
 
 
-get_handler(Name, Identifier, HandlerMod, HandlerArgs) ->
+get_handler(Name, Identifier, HandlerMod, HandlerArgs, MetricsInfo) ->
     case hello_registry:lookup({handler, Name, Identifier}) of
         {error, not_found} ->
             ?LOG_DEBUG("Handler for service ~p and identifier ~p not found. Starting handler.",
                        [Name, Identifier], [], ?LOGID22),
-            start_handler(Identifier, HandlerMod, HandlerArgs);
+            start_handler(Identifier, HandlerMod, HandlerArgs, MetricsInfo);
         {ok, _, Handler} ->
             ?LOG_DEBUG("Found handler ~p for service ~p and identifier ~p.",
                        [Handler, Name, Identifier], [], ?LOGID23),
             Handler
     end.
 
-start_handler(Identifier, HandlerMod, HandlerArgs) ->
-    {ok, Handler} = gen_server:start(?MODULE, {Identifier, HandlerMod, HandlerArgs}, []),
+start_handler(Identifier, HandlerMod, HandlerArgs, MetricsInfo) ->
+    {ok, Handler} = gen_server:start(?MODULE, {Identifier, HandlerMod, HandlerArgs, MetricsInfo}, []),
     Handler.
 
 process(Handler, Request) ->
@@ -134,10 +136,10 @@ notify(#context{protocol_mod = ProtocolMod, transport = TransportMod} = Context,
 %% --------------------------------------------------------------------------------
 %% -- gen_server callbacks
 %% @hidden
-init({Identifier, HandlerMod, HandlerArgs}) ->
+init({Identifier, HandlerMod, HandlerArgs, MetricsInfo}) ->
     case HandlerMod:init(Identifier, HandlerArgs) of
         {ok, Handlerstate} ->
-            {ok, #state{mod = HandlerMod, state = Handlerstate,
+            {ok, #state{mod = HandlerMod, state = Handlerstate, metrics_info = MetricsInfo,
                         async_reply_map = gb_trees:empty(), id = Identifier}};
         Other ->
             Other

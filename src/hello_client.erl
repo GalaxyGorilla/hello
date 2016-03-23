@@ -35,6 +35,7 @@
 
 -include("hello.hrl").
 -include("hello_log.hrl").
+-include("hello_metrics.hrl").
 -include_lib("ex_uri/include/ex_uri.hrl").
 
 -define(HELLO_CLIENT_DEFAULT_META(ClientId, Url), [{hello_client, ClientId}, {hello_transport_url, Url}]).
@@ -124,7 +125,7 @@ timeout_call(Client, Call, Timeout) ->
 -record(client_state, {
     id :: term(),
     uri_rec :: #ex_uri{},
-    metrics_info :: {atom(), atom(), atom()},
+    metrics_info :: client_metrics_info(),
     transport_opts :: term(),
     transport_mod :: module(),
     transport_state :: term(),
