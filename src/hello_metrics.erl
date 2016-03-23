@@ -232,7 +232,8 @@ parse_ex_uri_ip(inet6, Host) ->
 
 atomize_ex_uri(#ex_uri{scheme = Scheme, authority = #ex_uri_authority{host = Host, port = Port}}) ->
     {ok, IP} = parse_ex_uri_ip(protocol(Scheme), Host),
-    {ip_to_atom(IP), port_to_atom(Port)}.
+    {ip_to_atom(IP), port_to_atom(Port)};
+atomize_ex_uri(_) -> {undefined, undefined}.
 
 ip_to_atom(IP) when is_atom(IP) -> IP;
 ip_to_atom(IP) -> list_to_atom(inet:ntoa(IP)).
