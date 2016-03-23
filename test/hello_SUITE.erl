@@ -8,11 +8,9 @@
 % ---------------------------------------------------------------------
 % -- test cases
 bind_http(_Config) ->
-    timer:sleep(100),
     [bind_url(?HTTP, Protocol) || Protocol <- ?PROTOCOLS].
 
 bind_zmq_tcp(_Config) ->
-    timer:sleep(100),
     [bind_url(?ZMQ_TCP, Protocol) || Protocol <- ?PROTOCOLS].
 
 unbind_all(_Config) ->
@@ -76,8 +74,8 @@ keep_alive(_Config) ->
 % -- common_test callbacks
 all() ->
     [bind_http,
-     bind_zmq_tcp
-    % unbind_all,
+     bind_zmq_tcp,
+     unbind_all
     % start_supervised,
     % start_named_supervised,
     % keep_alive

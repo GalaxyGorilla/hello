@@ -127,7 +127,6 @@ metrics_action(Action, Service, Args) ->
     EnabledServices = proplists:get_value(enabled, MetricsOpts, []),
     case lists:member(Service, EnabledServices) of
         true ->
-    io:format(standard_error, "~p~n~p~n~p~n~p~n", [Action, Service, Args, Metrics]),
             proceed_metrics_action(Action, Service, Args, Metrics);
         false ->
             ok
