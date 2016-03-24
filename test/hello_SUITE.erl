@@ -64,6 +64,40 @@ keep_alive(_Config) ->
     meck:unload(hello_client),
     ok.
 
+request_metrics(_Config) ->
+    {Url, _} = ?HTTP,
+    hello:stop_listener(Url), % stop the listener on this url if present 
+    {ok, _} = hello:start_listener(test_listener, Url, [], hello_proto_jsonrpc, [], hello_router),
+    ok = hello:bind(Url, handler1, 0),
+    ProtocolOpts = [{protocol, hello_proto_jsonrpc}],
+    {ok, _Pid} = hello_client:start_supervised(test_client, Url, [], ProtocolOpts, []),
+    {_, [Arg], _} = ?REQ11,
+
+    % wait for metrics to come up
+    timer:sleep(300),
+
+    % metric ids for total request and package counting
+    ListenerId = [hello,request,total,listener,total,test_listener,'127.0.0.1','6000',total,undefined,undefined,counter],
+    HandlerId =  [hello,request,total,handler,'app/test',test_listener,'127.0.0.1','6000',total,undefined,undefined,counter],
+    ClientId = [hello,request,total,client,undefined,test_client,undefined,undefined,undefined,'127.0.0.1','6000',counter],
+    ListenerPacketInId = [hello,packet,in,listener,total,test_listener,'127.0.0.1','6000',total,undefined,undefined,counter],
+    ListenerPacketOutId = [hello,packet,out,listener,total,test_listener,'127.0.0.1','6000',total,undefined,undefined,counter],
+    IdList = [ListenerId, HandlerId, ClientId, ListenerPacketInId, ListenerPacketOutId],
+
+    % first reset to prevent interference of previous tests
+    [ exometer:reset(Id) || Id <- IdList ],
+
+    % execute one request
+    {ok, Arg} = hello_client:call(test_client, ?REQ11),
+
+    % check if all have value 1
+    [ {ok,[{value,1},_]} = exometer:get_value(Id) || Id <- IdList ],
+
+    hello_client_sup:stop_client(test_client),
+    hello:unbind(Url, handler1),
+    hello:stop_listener(Url),
+    ok.
+
 % ---------------------------------------------------------------------
 % -- common_test callbacks
 all() ->
@@ -72,7 +106,8 @@ all() ->
      unbind_all,
      start_supervised,
      start_named_supervised,
-     keep_alive
+     keep_alive,
+     request_metrics
      ].
 
 init_per_suite(Config) ->

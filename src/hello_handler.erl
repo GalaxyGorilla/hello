@@ -95,6 +95,7 @@ get_handler(Name, Identifier, HandlerMod, HandlerArgs, MetricsInfo) ->
     end.
 
 start_handler(Identifier, HandlerMod, HandlerArgs, MetricsInfo) ->
+    hello_metrics:create_handler(MetricsInfo),
     {ok, Handler} = gen_server:start(?MODULE, {Identifier, HandlerMod, HandlerArgs, MetricsInfo}, []),
     Handler.
 
@@ -201,7 +202,8 @@ handle_info(InfoMsg, State = #state{mod = Mod, state = ModState, context = Conte
     end.
 
 %% @hidden
-terminate(Reason, _State = #state{mod = Mod, state = ModState, context = Context, timer = Timer}) ->
+terminate(Reason, _State = #state{mod = Mod, state = ModState, context = Context, timer = Timer, metrics_info = MetricsInfo}) ->
+    hello_metrics:delete_handler(MetricsInfo),
     case {Reason, Timer#timer.stopped_because_idle} of
         {normal, true} ->
             Mod:terminate(Context, idle_timeout, ModState);

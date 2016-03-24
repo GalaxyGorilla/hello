@@ -198,7 +198,7 @@ handle_info(?PING, State = #client_state{waiting_for_pong = true, keep_alive_int
                                          metrics_info = MetricsInfo, last_pong = LastPong, id = ClientId}) ->
     ?LOG_ERROR("~p : Keep alive timeout after ~p ms. Connection will be reestablished.",
                [ClientId, last_pong(LastPong, KeepAliveInterval)], gen_meta_fields(State), ?LOGID20),
-    hello_metrics:update_client_request(ping, MetricsInfo, hello_metrics:timestamp(milli_seconds) - LastPong),
+    hello_metrics:update_client_request(internal, MetricsInfo, hello_metrics:timestamp(milli_seconds) - LastPong),
     TransportModule:terminate_transport(lost_connection, TransportState),
     case init_transport(TransportModule, URIRec, TransportOpts, ProtocolOpts, ClientOpts, State) of
         {ok, NewState} -> {noreply, NewState};
@@ -207,7 +207,7 @@ handle_info(?PING, State = #client_state{waiting_for_pong = true, keep_alive_int
 handle_info(?PING, State = #client_state{transport_mod=TransportModule, transport_state=TransportState,
                                          keep_alive_interval = KeepAliveInterval, metrics_info = MetricsInfo,
                                          keep_alive_ref = TimerRef, id = ClientId}) ->
-    hello_metrics:update_client_request(ping, MetricsInfo, 0),
+    hello_metrics:update_client_request(internal, MetricsInfo, 0),
     {ok, NewTransportState} = TransportModule:send_request(?PING, ?INTERNAL_SIGNATURE, TransportState),
     ?LOG_DEBUG("~p : Sent keep alive request. Pinging server again in ~p ms.",
                [ClientId, KeepAliveInterval], gen_meta_fields(State), ?LOGID21),

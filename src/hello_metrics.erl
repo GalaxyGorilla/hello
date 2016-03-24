@@ -50,11 +50,11 @@ delete_listener(MetricsInfo) ->
 
 -spec create_handler(handler_metrics_info()) -> ok.
 create_handler(MetricsInfo) ->
-    create(listener, MetricsInfo).
+    create(handler, MetricsInfo).
 
 -spec delete_handler(handler_metrics_info()) -> ok.
 delete_handler(MetricsInfo) ->
-    delete(listener, MetricsInfo).
+    delete(handler, MetricsInfo).
 
 -spec create_client(client_metrics_info()) -> ok.
 create_client(MetricsInfo) ->

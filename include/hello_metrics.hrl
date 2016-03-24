@@ -23,7 +23,7 @@
 
 
 %% this will be prepended to all eradius metrics
--define(DEFAULT_ENTRIES, [hello, api]).
+-define(DEFAULT_ENTRIES, [hello]).
 
 -define(METRICS, [{listener, ?LISTENER_METRICS},
                   {handler,  ?HANDLER_METRICS},
@@ -80,7 +80,7 @@
      ] ++ ?BASIC_REQUEST_METRICS).
 
 -define(CLIENT_METRICS, [
-     {request, ping, [
+     {request, internal, [
        {ticks, ?HISTOGRAM_1000},
        {counter, ?COUNTER}]},
      {request, timeout, [
