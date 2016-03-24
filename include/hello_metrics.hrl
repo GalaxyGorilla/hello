@@ -41,8 +41,8 @@
                           {time_span, 1000}]}).
 
 -define(FUNCTION_UPTIME,{{function,
-                          eradius_metrics,
-                          update_uptime,
+                          hello_metrics,
+                          update_listener_uptime,
                           undefined,
                           proplist,
                           [value]},

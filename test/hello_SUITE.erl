@@ -98,6 +98,25 @@ request_metrics(_Config) ->
     hello:stop_listener(Url),
     ok.
 
+time_metrics(_Config) ->
+    {Url, _} = ?HTTP,
+
+    ListenerLastResetId = [hello,time,last_reset,listener,total,test_listener,'127.0.0.1','6000',total,undefined,undefined,gauge],
+    exometer:reset(ListenerLastResetId),
+
+    {ok, _} = hello:start_listener(test_listener, Url, [], hello_proto_jsonrpc, [], hello_router),
+
+    % first check last_reset
+    {ok,[{value, LastReset},_]} = exometer:get_value(ListenerLastResetId),
+    true = LastReset > 0,
+
+    % uptime is special because it has the exometer 'function' type and it is only active when a subscription
+    % is started on this metric. we just check here that the exometer callback function is working.
+    timer:sleep(100),
+    [{value, Uptime}] = hello_metrics:update_listener_uptime({test_listener,'127.0.0.1','6000'}),
+    true = Uptime >= 100,
+    ok.
+
 % ---------------------------------------------------------------------
 % -- common_test callbacks
 all() ->
@@ -107,7 +126,8 @@ all() ->
      start_supervised,
      start_named_supervised,
      keep_alive,
-     request_metrics
+     request_metrics,
+     time_metrics
      ].
 
 init_per_suite(Config) ->
